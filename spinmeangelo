@@ -1,0 +1,306 @@
+-- Services
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
+local TweenService = game:GetService("TweenService")
+
+local player = Players.LocalPlayer
+local playerGui = player:WaitForChild("PlayerGui")
+
+-- Main ScreenGui
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "SakuraHub"
+screenGui.ResetOnSpawn = false
+screenGui.Parent = playerGui
+
+-- Main Frame
+local mainFrame = Instance.new("Frame")
+mainFrame.Name = "MainFrame"
+mainFrame.Size = UDim2.new(0, 500, 0, 450)
+mainFrame.Position = UDim2.new(0.5, -250, 0.5, -225)
+mainFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 35)
+mainFrame.BorderSizePixel = 0
+mainFrame.Parent = screenGui
+
+-- Corner rounding
+local corner = Instance.new("UICorner")
+corner.CornerRadius = UDim.new(0, 12)
+corner.Parent = mainFrame
+
+-- Title
+local title = Instance.new("TextLabel")
+title.Name = "Title"
+title.Size = UDim2.new(1, 0, 0, 50)
+title.Position = UDim2.new(0, 0, 0, 0)
+title.BackgroundTransparency = 1
+title.Text = "🌸 SAKURA HUB 🌸"
+title.TextColor3 = Color3.fromRGB(255, 255, 255)
+title.TextScaled = true
+title.Font = Enum.Font.GothamBold
+title.Parent = mainFrame
+
+-- Variables
+local toggles = {
+    crate = {active = false, connection = nil},
+    potion = {active = false, connection = nil},
+    afk = false,
+    equipBest = {active = false, connection = nil}
+}
+
+local crateList = {"Porcelain", "Hell", "Ghost", "Abandoned", "Haunted", "Celestial", "Red Moon", "Vortex", "Cursed", "Devilous"}
+local potionList = {"Yen", "Lucky", "Mutation", "Super Yen", "Super Lucky", "Rich", "Clover", "Angelic", "Bank", "Evil", "Fairy", "Greed"}
+
+-- Functions
+local function createToggleButton(parent, name, position, callback, size)
+    local btn = Instance.new("TextButton")
+    btn.Name = name
+    btn.Size = size or UDim2.new(1, -20, 0, 40)
+    btn.Position = position
+    btn.BackgroundColor3 = Color3.fromRGB(50, 50, 60)
+    btn.Text = name
+    btn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    btn.TextScaled = true
+    btn.Font = Enum.Font.Gotham
+    btn.Parent = parent
+    
+    local btnCorner = Instance.new("UICorner")
+    btnCorner.CornerRadius = UDim.new(0, 8)
+    btnCorner.Parent = btn
+    
+    btn.MouseButton1Click:Connect(callback)
+    
+    -- Hover effects
+    btn.MouseEnter:Connect(function()
+        TweenService:Create(btn, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(70, 70, 80)}):Play()
+    end)
+    btn.MouseLeave:Connect(function()
+        local color = toggles[name:lower()] and toggles[name:lower()].active and Color3.fromRGB(100, 200, 100) or Color3.fromRGB(50, 50, 60)
+        TweenService:Create(btn, TweenInfo.new(0.2), {BackgroundColor3 = color}):Play()
+    end)
+    
+    return btn
+end
+
+local function buyCrate(crateName)
+    pcall(function()
+        ReplicatedStorage.Events.Crate.purchase:FireServer(crateName, 1)
+        print("✅ Bought " .. crateName .. " Crate")
+    end)
+end
+
+local function buyPotion(potionName)
+    pcall(function()
+        ReplicatedStorage.Events.Potion.purchase:FireServer(potionName, 1)
+        print("✅ Bought " .. potionName .. " Potion")
+    end)
+end
+
+local function equipBest()
+    pcall(function()
+        ReplicatedStorage.Events.Plot.equipBest:InvokeServer()
+        print("⚡ Equipped Best")
+    end)
+end
+
+local function toggleCrates()
+    toggles.crate.active = not toggles.crate.active
+    local btn = mainFrame.CratesFrame.CrateToggle
+    
+    if toggles.crate.active then
+        btn.BackgroundColor3 = Color3.fromRGB(100, 200, 100)
+        btn.Text = "🟢 Crates: ON (3s)"
+        toggles.crate.connection = RunService.Heartbeat:Connect(function()
+            if toggles.crate.active then
+                wait(3)
+                for _, crate in ipairs(crateList) do
+                    buyCrate(crate)
+                    wait(0.1)
+                end
+            end
+        end)
+    else
+        btn.BackgroundColor3 = Color3.fromRGB(200, 100, 100)
+        btn.Text = "🔴 Crates: OFF"
+        if toggles.crate.connection then
+            toggles.crate.connection:Disconnect()
+            toggles.crate.connection = nil
+        end
+    end
+end
+
+local function togglePotions()
+    toggles.potion.active = not toggles.potion.active
+    local btn = mainFrame.PotionsFrame.PotionToggle
+    
+    if toggles.potion.active then
+        btn.BackgroundColor3 = Color3.fromRGB(100, 200, 100)
+        btn.Text = "🟢 Potions: ON (3s)"
+        toggles.potion.connection = RunService.Heartbeat:Connect(function()
+            if toggles.potion.active then
+                wait(3)
+                for _, potion in ipairs(potionList) do
+                    buyPotion(potion)
+                    wait(0.1)
+                end
+            end
+        end)
+    else
+        btn.BackgroundColor3 = Color3.fromRGB(200, 100, 100)
+        btn.Text = "🔴 Potions: OFF"
+        if toggles.potion.connection then
+            toggles.potion.connection:Disconnect()
+            toggles.potion.connection = nil
+        end
+    end
+end
+
+-- Create scrolling frames
+local function createScrollingFrame(parent, name, position)
+    local scrollFrame = Instance.new("ScrollingFrame")
+    scrollFrame.Name = name
+    scrollFrame.Size = UDim2.new(1, -20, 0.7, 0)
+    scrollFrame.Position = position
+    scrollFrame.BackgroundTransparency = 1
+    scrollFrame.ScrollBarThickness = 6
+    scrollFrame.ScrollBarImageColor3 = Color3.fromRGB(100, 100, 120)
+    scrollFrame.Parent = parent
+    
+    local listLayout = Instance.new("UIListLayout")
+    listLayout.SortOrder = Enum.SortOrder.LayoutOrder
+    listLayout.Padding = UDim.new(0, 5)
+    listLayout.Parent = scrollFrame
+    
+    scrollFrame.CanvasSize = UDim2.new(0, 0, 0, 0)
+    listLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
+        scrollFrame.CanvasSize = UDim2.new(0, 0, 0, listLayout.AbsoluteContentSize.Y + 10)
+    end)
+    
+    return scrollFrame
+end
+
+-- Crates Section
+local cratesFrame = Instance.new("Frame")
+cratesFrame.Name = "CratesFrame"
+cratesFrame.Size = UDim2.new(0.48, -10, 0.45, 0)
+cratesFrame.Position = UDim2.new(0, 10, 0, 60)
+cratesFrame.BackgroundColor3 = Color3.fromRGB(40, 40, 50)
+cratesFrame.Parent = mainFrame
+
+local cratesCorner = Instance.new("UICorner")
+cratesCorner.CornerRadius = UDim.new(0, 8)
+cratesCorner.Parent = cratesFrame
+
+local cratesTitle = Instance.new("TextLabel")
+cratesTitle.Size = UDim2.new(1, 0, 0, 30)
+cratesTitle.BackgroundTransparency = 1
+cratesTitle.Text = "📦 CRATES"
+cratesTitle.TextColor3 = Color3.fromRGB(255, 200, 100)
+cratesTitle.TextScaled = true
+cratesTitle.Font = Enum.Font.GothamBold
+cratesTitle.Parent = cratesFrame
+
+createToggleButton(cratesFrame, "🟢 Crates: OFF", UDim2.new(0, 10, 0, 35), toggleCrates, UDim2.new(1, -20, 0, 35))
+
+-- Potions Section
+local potionsFrame = Instance.new("Frame")
+potionsFrame.Name = "PotionsFrame"
+potionsFrame.Size = UDim2.new(0.48, -10, 0.45, 0)
+potionsFrame.Position = UDim2.new(0.52, 0, 0, 60)
+potionsFrame.BackgroundColor3 = Color3.fromRGB(40, 40, 50)
+potionsFrame.Parent = mainFrame
+
+local potionsCorner = Instance.new("UICorner")
+potionsCorner.CornerRadius = UDim.new(0, 8)
+potionsCorner.Parent = potionsFrame
+
+local potionsTitle = Instance.new("TextLabel")
+potionsTitle.Size = UDim2.new(1, 0, 0, 30)
+potionsTitle.BackgroundTransparency = 1
+potionsTitle.Text = "🧪 POTIONS"
+potionsTitle.TextColor3 = Color3.fromRGB(100, 200, 255)
+potionsTitle.TextScaled = true
+potionsTitle.Font = Enum.Font.GothamBold
+potionsTitle.Parent = potionsFrame
+
+createToggleButton(potionsFrame, "🔴 Potions: OFF", UDim2.new(0, 10, 0, 35), togglePotions, UDim2.new(1, -20, 0, 35))
+
+-- Utility Section
+local utilityFrame = Instance.new("Frame")
+utilityFrame.Name = "UtilityFrame"
+utilityFrame.Size = UDim2.new(1, -20, 0, 80)
+utilityFrame.Position = UDim2.new(0, 10, 1, -90)
+utilityFrame.BackgroundTransparency = 1
+utilityFrame.Parent = mainFrame
+
+-- Anti-AFK Toggle
+createToggleButton(utilityFrame, "🟢 Anti-AFK: OFF", UDim2.new(0, 0, 0, 0), function()
+    toggles.afk = not toggles.afk
+    local btn = utilityFrame:FindFirstChild("TextButton")
+    if toggles.afk then
+        btn.BackgroundColor3 = Color3.fromRGB(100, 200, 100)
+        btn.Text = "🟢 Anti-AFK: ON"
+        spawn(function()
+            while toggles.afk do
+                local VirtualUser = game:GetService('VirtualUser')
+                VirtualUser:CaptureController()
+                VirtualUser:ClickButton2(Vector2.new())
+                wait(1)
+            end
+        end)
+    else
+        btn.BackgroundColor3 = Color3.fromRGB(200, 100, 100)
+        btn.Text = "🔴 Anti-AFK: OFF"
+    end
+end, UDim2.new(0.48, -5, 1, 0))
+
+-- Equip Best Toggle
+createToggleButton(utilityFrame, "🔴 Equip Best: OFF", UDim2.new(0.52, 0, 0, 0), function()
+    toggles.equipBest.active = not toggles.equipBest.active
+    local btn = utilityFrame:FindFirstChild("TextButton", true)
+    if toggles.equipBest.active then
+        btn.BackgroundColor3 = Color3.fromRGB(100, 200, 100)
+        btn.Text = "🟢 Equip Best: ON (1m)"
+        toggles.equipBest.connection = RunService.Heartbeat:Connect(function()
+            if toggles.equipBest.active then
+                wait(60)
+                equipBest()
+            end
+        end)
+    else
+        btn.BackgroundColor3 = Color3.fromRGB(200, 100, 100)
+        btn.Text = "🔴 Equip Best: OFF"
+        if toggles.equipBest.connection then
+            toggles.equipBest.connection:Disconnect()
+            toggles.equipBest.connection = nil
+        end
+    end
+end, UDim2.new(0.48, -5, 1, 0))
+
+-- Minimize Button
+local minimizeBtn = Instance.new("TextButton")
+minimizeBtn.Size = UDim2.new(0, 30, 0, 30)
+minimizeBtn.Position = UDim2.new(1, -40, 0, 10)
+minimizeBtn.BackgroundColor3 = Color3.fromRGB(255, 100, 100)
+minimizeBtn.Text = "−"
+minimizeBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+minimizeBtn.TextScaled = true
+minimizeBtn.Font = Enum.Font.GothamBold
+minimizeBtn.Parent = mainFrame
+
+local minCorner = Instance.new("UICorner")
+minCorner.CornerRadius = UDim.new(0, 6)
+minCorner.Parent = minimizeBtn
+
+local isMinimized = false
+minimizeBtn.MouseButton1Click:Connect(function()
+    isMinimized = not isMinimized
+    if isMinimized then
+        minimizeBtn.Text = "+"
+        TweenService:Create(mainFrame, TweenInfo.new(0.3), {Size = UDim2.new(0, 60, 0, 50)}):Play()
+    else
+        minimizeBtn.Text = "−"
+        TweenService:Create(mainFrame, TweenInfo.new(0.3), {Size = UDim2.new(0, 500, 0, 450)}):Play()
+    end
+end)
+
+print("🌸 Sakura Hub Loaded! All features ready!")
