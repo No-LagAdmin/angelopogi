@@ -187,7 +187,7 @@ createSwitchRow("Auto Buy Potions", function(state)
     toggles.Potions = state
     if state then
         task.spawn(function()
-            local pList = {"Yen", "Lucky", "Mutation", "Super Yen", "Super Lucky"}
+            local pList = {"Yen", "Lucky", "Mutation", "Super Yen", "Super Lucky", "Rich", "Clover", "Angelic", "Bank", "Evil", "Fairy", "Greed"}
             while toggles.Potions do
                 for _, p in pairs(pList) do
                     if not toggles.Potions then break end
