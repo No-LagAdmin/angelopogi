@@ -1,7 +1,6 @@
 -- Services
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
 
 local player = Players.LocalPlayer
@@ -9,215 +8,182 @@ local playerGui = player:WaitForChild("PlayerGui")
 
 -- Main ScreenGui
 local screenGui = Instance.new("ScreenGui")
-screenGui.Name = "SakuraHub"
+screenGui.Name = "AngeloPogiHub"
 screenGui.ResetOnSpawn = false
 screenGui.Parent = playerGui
 
 -- Main Frame
 local mainFrame = Instance.new("Frame")
 mainFrame.Name = "MainFrame"
-mainFrame.Size = UDim2.new(0, 500, 0, 450)
-mainFrame.Position = UDim2.new(0.5, -250, 0.5, -225)
-mainFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 35)
+mainFrame.Size = UDim2.new(0, 350, 0, 400)
+mainFrame.Position = UDim2.new(0.5, -175, 0.5, -200)
+mainFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 35)
 mainFrame.BorderSizePixel = 0
 mainFrame.Parent = screenGui
 
-local corner = Instance.new("UICorner")
-corner.CornerRadius = UDim.new(0, 12)
-corner.Parent = mainFrame
+local mainCorner = Instance.new("UICorner")
+mainCorner.CornerRadius = UDim.new(0, 15)
+mainCorner.Parent = mainFrame
 
--- Title
-local title = Instance.new("TextLabel")
-title.Name = "Title"
-title.Size = UDim2.new(1, 0, 0, 50)
-title.BackgroundTransparency = 1
-title.Text = "🌸 SAKURA HUB 🌸"
-title.TextColor3 = Color3.fromRGB(255, 255, 255)
-title.TextScaled = true
-title.Font = Enum.Font.GothamBold
-title.Parent = mainFrame
+-- Header
+local header = Instance.new("TextLabel")
+header.Size = UDim2.new(1, 0, 0, 50)
+header.BackgroundColor3 = Color3.fromRGB(40, 40, 45)
+header.Text = "  ANGELO POGI HUB"
+header.TextColor3 = Color3.fromRGB(255, 255, 255)
+header.TextXAlignment = Enum.TextXAlignment.Left
+header.Font = Enum.Font.GothamBold
+header.TextSize = 18
+header.Parent = mainFrame
 
--- Variables
+local headerCorner = Instance.new("UICorner")
+headerCorner.CornerRadius = UDim.new(0, 15)
+headerCorner.Parent = header
+
+-- Table Container (List Layout)
+local container = Instance.new("ScrollingFrame")
+container.Size = UDim2.new(1, -20, 1, -70)
+container.Position = UDim2.new(0, 10, 0, 60)
+container.BackgroundTransparency = 1
+container.ScrollBarThickness = 2
+container.Parent = mainFrame
+
+local layout = Instance.new("UIListLayout")
+layout.Padding = UDim.new(0, 8)
+layout.SortOrder = Enum.SortOrder.LayoutOrder
+layout.Parent = container
+
+-- Logic Tables
 local toggles = {
-    crate = false,
-    potion = false,
-    afk = false,
-    equipBest = false
+    Crates = false,
+    Potions = false,
+    AntiAFK = false,
+    EquipBest = false
 }
 
-local crateList = {"Porcelain", "Hell", "Ghost", "Abandoned", "Haunted", "Celestial", "Red Moon", "Vortex", "Cursed", "Devilous"}
-local potionList = {"Yen", "Lucky", "Mutation", "Super Yen", "Super Lucky", "Rich", "Clover", "Angelic", "Bank", "Evil", "Fairy", "Greed"}
-
--- Helper Functions
-local function createToggleButton(parent, internalName, displayName, position, callback, size)
-    local btn = Instance.new("TextButton")
-    btn.Name = internalName -- Use a fixed internal name for easy referencing
-    btn.Size = size or UDim2.new(1, -20, 0, 40)
-    btn.Position = position
-    btn.BackgroundColor3 = Color3.fromRGB(50, 50, 60)
-    btn.Text = displayName
-    btn.TextColor3 = Color3.fromRGB(255, 255, 255)
-    btn.TextScaled = true
-    btn.Font = Enum.Font.Gotham
-    btn.Parent = parent
-    
-    local btnCorner = Instance.new("UICorner")
-    btnCorner.CornerRadius = UDim.new(0, 8)
-    btnCorner.Parent = btn
-    
-    btn.MouseButton1Click:Connect(callback)
-    return btn
+-- Functions for Remote Actions
+local function buyCrates()
+    local list = {"Porcelain", "Hell", "Ghost", "Abandoned", "Haunted", "Celestial", "Red Moon", "Vortex", "Cursed", "Devilous"}
+    for _, c in pairs(list) do if not toggles.Crates then break end ReplicatedStorage.Events.Crate.purchase:FireServer(c, 1) task.wait(0.1) end
 end
 
--- Remote Functions
-local function buyCrate(crateName)
-    pcall(function()
-        ReplicatedStorage.Events.Crate.purchase:FireServer(crateName, 1)
+-- Custom Switch Component Creator
+local function createSwitchRow(titleText, callback)
+    local row = Instance.new("Frame")
+    row.Size = UDim2.new(1, -5, 0, 50)
+    row.BackgroundColor3 = Color3.fromRGB(45, 45, 50)
+    row.Parent = container
+    
+    Instance.new("UICorner", row).CornerRadius = UDim.new(0, 8)
+    
+    local label = Instance.new("TextLabel")
+    label.Size = UDim2.new(0.6, 0, 1, 0)
+    label.Position = UDim2.new(0, 15, 0, 0)
+    label.BackgroundTransparency = 1
+    label.Text = titleText
+    label.TextColor3 = Color3.fromRGB(200, 200, 200)
+    label.Font = Enum.Font.Gotham
+    label.TextSize = 14
+    label.TextXAlignment = Enum.TextXAlignment.Left
+    label.Parent = row
+    
+    -- Switch Track
+    local track = Instance.new("TextButton")
+    track.Name = "Track"
+    track.Size = UDim2.new(0, 50, 0, 24)
+    track.Position = UDim2.new(1, -65, 0.5, -12)
+    track.BackgroundColor3 = Color3.fromRGB(70, 70, 75)
+    track.Text = ""
+    track.Parent = row
+    
+    local trackCorner = Instance.new("UICorner")
+    trackCorner.CornerRadius = UDim.new(1, 0)
+    trackCorner.Parent = track
+    
+    -- Switch Knob
+    local knob = Instance.new("Frame")
+    knob.Size = UDim2.new(0, 18, 0, 18)
+    knob.Position = UDim2.new(0, 4, 0.5, -9)
+    knob.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+    knob.Parent = track
+    
+    Instance.new("UICorner", knob).CornerRadius = UDim.new(1, 0)
+    
+    local active = false
+    track.MouseButton1Click:Connect(function()
+        active = not active
+        local goalPos = active and UDim2.new(1, -22, 0.5, -9) or UDim2.new(0, 4, 0.5, -9)
+        local goalCol = active and Color3.fromRGB(0, 200, 100) or Color3.fromRGB(70, 70, 75)
+        
+        TweenService:Create(knob, TweenInfo.new(0.2), {Position = goalPos}):Play()
+        TweenService:Create(track, TweenInfo.new(0.2), {BackgroundColor3 = goalCol}):Play()
+        
+        callback(active)
     end)
 end
 
-local function buyPotion(potionName)
-    pcall(function()
-        ReplicatedStorage.Events.Potion.purchase:FireServer(potionName, 1)
-    end)
-end
+-- Create Rows
+createSwitchRow("Auto Buy Crates", function(state)
+    toggles.Crates = state
+    if state then task.spawn(function() while toggles.Crates do buyCrates() task.wait(3) end end) end
+end)
 
--- Logic Toggles
-local function toggleCrates()
-    toggles.crate = not toggles.crate
-    local btn = mainFrame.CratesFrame:FindFirstChild("CrateToggle")
-    
-    if toggles.crate then
-        btn.BackgroundColor3 = Color3.fromRGB(100, 200, 100)
-        btn.Text = "🟢 Crates: ON"
+createSwitchRow("Auto Buy Potions", function(state)
+    toggles.Potions = state
+    if state then
         task.spawn(function()
-            while toggles.crate do
-                for _, crate in ipairs(crateList) do
-                    if not toggles.crate then break end
-                    buyCrate(crate)
-                    task.wait(0.1)
-                end
+            local list = {"Yen", "Lucky", "Mutation", "Super Yen", "Super Lucky"}
+            while toggles.Potions do
+                for _, p in pairs(list) do if not toggles.Potions then break end ReplicatedStorage.Events.Potion.purchase:FireServer(p, 1) task.wait(0.1) end
                 task.wait(3)
             end
         end)
-    else
-        btn.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
-        btn.Text = "🔴 Crates: OFF"
     end
-end
+end)
 
-local function togglePotions()
-    toggles.potion = not toggles.potion
-    local btn = mainFrame.PotionsFrame:FindFirstChild("PotionToggle")
-    
-    if toggles.potion then
-        btn.BackgroundColor3 = Color3.fromRGB(100, 200, 100)
-        btn.Text = "🟢 Potions: ON"
-        task.spawn(function()
-            while toggles.potion do
-                for _, potion in ipairs(potionList) do
-                    if not toggles.potion then break end
-                    buyPotion(potion)
-                    task.wait(0.1)
-                end
-                task.wait(3)
-            end
-        end)
-    else
-        btn.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
-        btn.Text = "🔴 Potions: OFF"
-    end
-end
-
--- UI Setup: Crates
-local cratesFrame = Instance.new("Frame")
-cratesFrame.Name = "CratesFrame"
-cratesFrame.Size = UDim2.new(0.48, -10, 0.45, 0)
-cratesFrame.Position = UDim2.new(0, 10, 0, 60)
-cratesFrame.BackgroundColor3 = Color3.fromRGB(40, 40, 50)
-cratesFrame.Parent = mainFrame
-Instance.new("UICorner", cratesFrame).CornerRadius = UDim.new(0, 8)
-
-createToggleButton(cratesFrame, "CrateToggle", "🔴 Crates: OFF", UDim2.new(0, 10, 0, 40), toggleCrates, UDim2.new(1, -20, 0, 40))
-
--- UI Setup: Potions
-local potionsFrame = Instance.new("Frame")
-potionsFrame.Name = "PotionsFrame"
-potionsFrame.Size = UDim2.new(0.48, -10, 0.45, 0)
-potionsFrame.Position = UDim2.new(0.52, 0, 0, 60)
-potionsFrame.BackgroundColor3 = Color3.fromRGB(40, 40, 50)
-potionsFrame.Parent = mainFrame
-Instance.new("UICorner", potionsFrame).CornerRadius = UDim.new(0, 8)
-
-createToggleButton(potionsFrame, "PotionToggle", "🔴 Potions: OFF", UDim2.new(0, 10, 0, 40), togglePotions, UDim2.new(1, -20, 0, 40))
-
--- Utility Section
-local utilityFrame = Instance.new("Frame")
-utilityFrame.Name = "UtilityFrame"
-utilityFrame.Size = UDim2.new(1, -20, 0, 80)
-utilityFrame.Position = UDim2.new(0, 10, 1, -90)
-utilityFrame.BackgroundTransparency = 1
-utilityFrame.Parent = mainFrame
-
--- Anti-AFK
-createToggleButton(utilityFrame, "AFKToggle", "🔴 Anti-AFK: OFF", UDim2.new(0, 0, 0, 0), function()
-    toggles.afk = not toggles.afk
-    local btn = utilityFrame.AFKToggle
-    if toggles.afk then
-        btn.BackgroundColor3 = Color3.fromRGB(100, 200, 100)
-        btn.Text = "🟢 Anti-AFK: ON"
+createSwitchRow("Anti-AFK System", function(state)
+    toggles.AntiAFK = state
+    if state then
         task.spawn(function()
             local VU = game:GetService("VirtualUser")
-            while toggles.afk do
+            while toggles.AntiAFK do
                 VU:CaptureController()
                 VU:ClickButton2(Vector2.new())
                 task.wait(30)
             end
         end)
-    else
-        btn.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
-        btn.Text = "🔴 Anti-AFK: OFF"
     end
-end, UDim2.new(0.48, -5, 1, 0))
+end)
 
--- Equip Best
-createToggleButton(utilityFrame, "EquipToggle", "🔴 Equip Best: OFF", UDim2.new(0.52, 0, 0, 0), function()
-    toggles.equipBest = not toggles.equipBest
-    local btn = utilityFrame.EquipToggle
-    if toggles.equipBest then
-        btn.BackgroundColor3 = Color3.fromRGB(100, 200, 100)
-        btn.Text = "🟢 Equip Best: ON"
+createSwitchRow("Equip Best Items", function(state)
+    toggles.EquipBest = state
+    if state then
         task.spawn(function()
-            while toggles.equipBest do
+            while toggles.EquipBest do
                 pcall(function() ReplicatedStorage.Events.Plot.equipBest:InvokeServer() end)
                 task.wait(60)
             end
         end)
-    else
-        btn.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
-        btn.Text = "🔴 Equip Best: OFF"
     end
-end, UDim2.new(0.48, -5, 1, 0))
+end)
 
--- Minimize
-local minimizeBtn = Instance.new("TextButton")
-minimizeBtn.Size = UDim2.new(0, 30, 0, 30)
-minimizeBtn.Position = UDim2.new(1, -40, 0, 10)
-minimizeBtn.BackgroundColor3 = Color3.fromRGB(255, 100, 100)
-minimizeBtn.Text = "−"
-minimizeBtn.Parent = mainFrame
-Instance.new("UICorner", minimizeBtn).CornerRadius = UDim.new(0, 6)
-
-local isMinimized = false
-minimizeBtn.MouseButton1Click:Connect(function()
-    isMinimized = not isMinimized
-    local targetSize = isMinimized and UDim2.new(0, 150, 0, 50) or UDim2.new(0, 500, 0, 450)
-    minimizeBtn.Text = isMinimized and "+" or "−"
-    TweenService:Create(mainFrame, TweenInfo.new(0.3), {Size = targetSize}):Play()
-    -- Hide/Show children
-    for _, child in pairs(mainFrame:GetChildren()) do
-        if child:IsA("Frame") or child:IsA("ScrollingFrame") then
-            child.Visible = not isMinimized
-        end
+-- Draggable UI Logic
+local dragging, dragInput, dragStart, startPos
+mainFrame.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 then
+        dragging = true
+        dragStart = input.Position
+        startPos = mainFrame.Position
     end
+end)
+
+game:GetService("UserInputService").InputChanged:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseMovement and dragging then
+        local delta = input.Position - dragStart
+        mainFrame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+    end
+end)
+
+game:GetService("UserInputService").InputEnded:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 then dragging = false end
 end)
