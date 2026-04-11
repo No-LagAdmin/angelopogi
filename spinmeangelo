@@ -2,6 +2,7 @@
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TweenService = game:GetService("TweenService")
+local UserInputService = game:GetService("UserInputService")
 
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
@@ -10,14 +11,53 @@ local playerGui = player:WaitForChild("PlayerGui")
 local screenGui = Instance.new("ScreenGui")
 screenGui.Name = "AngeloPogiHub"
 screenGui.ResetOnSpawn = false
+screenGui.IgnoreGuiInset = true
 screenGui.Parent = playerGui
 
--- Main Frame
+-- LOGIC VARIABLES
+local toggles = {
+    Crates = false,
+    Potions = false,
+    AntiAFK = false,
+    EquipBest = false
+}
+
+-- 1. MINIMIZE BUTTON (The Square UI)
+local minButton = Instance.new("TextButton")
+minButton.Name = "MinimizeUI"
+minButton.Size = UDim2.new(0, 120, 0, 40)
+minButton.Position = UDim2.new(0.05, 0, 0.1, 0)
+minButton.BackgroundColor3 = Color3.fromRGB(35, 35, 40)
+minButton.BorderSizePixel = 0
+minButton.Text = "  Angelo Bragado"
+minButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+minButton.Font = Enum.Font.GothamBold
+minButton.TextSize = 12
+minButton.TextXAlignment = Enum.TextXAlignment.Left
+minButton.Visible = false -- Hidden by default
+minButton.Parent = screenGui
+
+local minCorner = Instance.new("UICorner")
+minCorner.CornerRadius = UDim.new(0, 8)
+minCorner.Parent = minButton
+
+local statusCircle = Instance.new("Frame")
+statusCircle.Name = "Circle"
+statusCircle.Size = UDim2.new(0, 8, 0, 8)
+statusCircle.Position = UDim2.new(1, -18, 0.5, -4)
+statusCircle.BackgroundColor3 = Color3.fromRGB(0, 255, 150)
+statusCircle.Parent = minButton
+
+local circleCorner = Instance.new("UICorner")
+circleCorner.CornerRadius = UDim.new(1, 0)
+circleCorner.Parent = statusCircle
+
+-- 2. MAIN HUB FRAME
 local mainFrame = Instance.new("Frame")
 mainFrame.Name = "MainFrame"
-mainFrame.Size = UDim2.new(0, 350, 0, 400)
-mainFrame.Position = UDim2.new(0.5, -175, 0.5, -200)
-mainFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 35)
+mainFrame.Size = UDim2.new(0, 350, 0, 420)
+mainFrame.Position = UDim2.new(0.5, -175, 0.5, -210)
+mainFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 30)
 mainFrame.BorderSizePixel = 0
 mainFrame.Parent = screenGui
 
@@ -26,122 +66,133 @@ mainCorner.CornerRadius = UDim.new(0, 15)
 mainCorner.Parent = mainFrame
 
 -- Header
-local header = Instance.new("TextLabel")
+local header = Instance.new("Frame")
 header.Size = UDim2.new(1, 0, 0, 50)
-header.BackgroundColor3 = Color3.fromRGB(40, 40, 45)
-header.Text = "  ANGELO POGI HUB"
-header.TextColor3 = Color3.fromRGB(255, 255, 255)
-header.TextXAlignment = Enum.TextXAlignment.Left
-header.Font = Enum.Font.GothamBold
-header.TextSize = 18
+header.BackgroundColor3 = Color3.fromRGB(35, 35, 45)
 header.Parent = mainFrame
 
 local headerCorner = Instance.new("UICorner")
 headerCorner.CornerRadius = UDim.new(0, 15)
 headerCorner.Parent = header
 
--- Table Container (List Layout)
+local title = Instance.new("TextLabel")
+title.Size = UDim2.new(1, -50, 1, 0)
+title.Position = UDim2.new(0, 15, 0, 0)
+title.BackgroundTransparency = 1
+title.Text = "ANGELO POGI HUB"
+title.TextColor3 = Color3.fromRGB(255, 255, 255)
+title.Font = Enum.Font.GothamBold
+title.TextSize = 18
+title.TextXAlignment = Enum.TextXAlignment.Left
+title.Parent = header
+
+-- Maximize/Close button inside Main
+local closeBtn = Instance.new("TextButton")
+closeBtn.Size = UDim2.new(0, 30, 0, 30)
+closeBtn.Position = UDim2.new(1, -40, 0.5, -15)
+closeBtn.BackgroundTransparency = 1
+closeBtn.Text = "—"
+closeBtn.TextColor3 = Color3.fromRGB(200, 200, 200)
+closeBtn.Font = Enum.Font.GothamBold
+closeBtn.TextSize = 20
+closeBtn.Parent = header
+
+-- Scroll Container
 local container = Instance.new("ScrollingFrame")
 container.Size = UDim2.new(1, -20, 1, -70)
 container.Position = UDim2.new(0, 10, 0, 60)
 container.BackgroundTransparency = 1
+container.BorderSizePixel = 0
 container.ScrollBarThickness = 2
 container.Parent = mainFrame
 
 local layout = Instance.new("UIListLayout")
-layout.Padding = UDim.new(0, 8)
+layout.Padding = UDim.new(0, 10)
 layout.SortOrder = Enum.SortOrder.LayoutOrder
 layout.Parent = container
 
--- Logic Tables
-local toggles = {
-    Crates = false,
-    Potions = false,
-    AntiAFK = false,
-    EquipBest = false
-}
-
--- Functions for Remote Actions
-local function buyCrates()
-    local list = {"Porcelain", "Hell", "Ghost", "Abandoned", "Haunted", "Celestial", "Red Moon", "Vortex", "Cursed", "Devilous"}
-    for _, c in pairs(list) do if not toggles.Crates then break end ReplicatedStorage.Events.Crate.purchase:FireServer(c, 1) task.wait(0.1) end
-end
-
--- Custom Switch Component Creator
+-- FUNCTIONALITY HELPER
 local function createSwitchRow(titleText, callback)
     local row = Instance.new("Frame")
-    row.Size = UDim2.new(1, -5, 0, 50)
-    row.BackgroundColor3 = Color3.fromRGB(45, 45, 50)
+    row.Size = UDim2.new(1, -5, 0, 55)
+    row.BackgroundColor3 = Color3.fromRGB(35, 35, 40)
     row.Parent = container
-    
-    Instance.new("UICorner", row).CornerRadius = UDim.new(0, 8)
+    Instance.new("UICorner", row).CornerRadius = UDim.new(0, 10)
     
     local label = Instance.new("TextLabel")
     label.Size = UDim2.new(0.6, 0, 1, 0)
     label.Position = UDim2.new(0, 15, 0, 0)
     label.BackgroundTransparency = 1
     label.Text = titleText
-    label.TextColor3 = Color3.fromRGB(200, 200, 200)
+    label.TextColor3 = Color3.fromRGB(230, 230, 230)
     label.Font = Enum.Font.Gotham
     label.TextSize = 14
     label.TextXAlignment = Enum.TextXAlignment.Left
     label.Parent = row
     
-    -- Switch Track
     local track = Instance.new("TextButton")
-    track.Name = "Track"
-    track.Size = UDim2.new(0, 50, 0, 24)
-    track.Position = UDim2.new(1, -65, 0.5, -12)
-    track.BackgroundColor3 = Color3.fromRGB(70, 70, 75)
+    track.Size = UDim2.new(0, 44, 0, 22)
+    track.Position = UDim2.new(1, -60, 0.5, -11)
+    track.BackgroundColor3 = Color3.fromRGB(60, 60, 65)
     track.Text = ""
     track.Parent = row
+    Instance.new("UICorner", track).CornerRadius = UDim.new(1, 0)
     
-    local trackCorner = Instance.new("UICorner")
-    trackCorner.CornerRadius = UDim.new(1, 0)
-    trackCorner.Parent = track
-    
-    -- Switch Knob
     local knob = Instance.new("Frame")
-    knob.Size = UDim2.new(0, 18, 0, 18)
-    knob.Position = UDim2.new(0, 4, 0.5, -9)
+    knob.Size = UDim2.new(0, 16, 0, 16)
+    knob.Position = UDim2.new(0, 3, 0.5, -8)
     knob.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
     knob.Parent = track
-    
     Instance.new("UICorner", knob).CornerRadius = UDim.new(1, 0)
     
     local active = false
     track.MouseButton1Click:Connect(function()
         active = not active
-        local goalPos = active and UDim2.new(1, -22, 0.5, -9) or UDim2.new(0, 4, 0.5, -9)
-        local goalCol = active and Color3.fromRGB(0, 200, 100) or Color3.fromRGB(70, 70, 75)
+        local goalPos = active and UDim2.new(1, -19, 0.5, -8) or UDim2.new(0, 3, 0.5, -8)
+        local goalCol = active and Color3.fromRGB(0, 180, 100) or Color3.fromRGB(60, 60, 65)
         
         TweenService:Create(knob, TweenInfo.new(0.2), {Position = goalPos}):Play()
         TweenService:Create(track, TweenInfo.new(0.2), {BackgroundColor3 = goalCol}):Play()
-        
         callback(active)
     end)
 end
 
--- Create Rows
+-- BUTTON ACTIONS
 createSwitchRow("Auto Buy Crates", function(state)
     toggles.Crates = state
-    if state then task.spawn(function() while toggles.Crates do buyCrates() task.wait(3) end end) end
+    if state then
+        task.spawn(function()
+            local crates = {"Porcelain", "Hell", "Ghost", "Abandoned", "Haunted", "Celestial", "Red Moon", "Vortex", "Cursed", "Devilous"}
+            while toggles.Crates do
+                for _, c in pairs(crates) do
+                    if not toggles.Crates then break end
+                    pcall(function() ReplicatedStorage.Events.Crate.purchase:FireServer(c, 1) end)
+                    task.wait(0.1)
+                end
+                task.wait(2)
+            end
+        end)
+    end
 end)
 
 createSwitchRow("Auto Buy Potions", function(state)
     toggles.Potions = state
     if state then
         task.spawn(function()
-            local list = {"Yen", "Lucky", "Mutation", "Super Yen", "Super Lucky"}
+            local pList = {"Yen", "Lucky", "Mutation", "Super Yen", "Super Lucky"}
             while toggles.Potions do
-                for _, p in pairs(list) do if not toggles.Potions then break end ReplicatedStorage.Events.Potion.purchase:FireServer(p, 1) task.wait(0.1) end
-                task.wait(3)
+                for _, p in pairs(pList) do
+                    if not toggles.Potions then break end
+                    pcall(function() ReplicatedStorage.Events.Potion.purchase:FireServer(p, 1) end)
+                    task.wait(0.1)
+                end
+                task.wait(2)
             end
         end)
     end
 end)
 
-createSwitchRow("Anti-AFK System", function(state)
+createSwitchRow("Anti-AFK", function(state)
     toggles.AntiAFK = state
     if state then
         task.spawn(function()
@@ -155,7 +206,7 @@ createSwitchRow("Anti-AFK System", function(state)
     end
 end)
 
-createSwitchRow("Equip Best Items", function(state)
+createSwitchRow("Auto Equip Best", function(state)
     toggles.EquipBest = state
     if state then
         task.spawn(function()
@@ -167,23 +218,43 @@ createSwitchRow("Equip Best Items", function(state)
     end
 end)
 
--- Draggable UI Logic
-local dragging, dragInput, dragStart, startPos
-mainFrame.InputBegan:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton1 then
-        dragging = true
-        dragStart = input.Position
-        startPos = mainFrame.Position
+-- MINIMIZE / MAXIMIZE LOGIC
+local function toggleUI()
+    local isHiding = mainFrame.Visible
+    if isHiding then
+        mainFrame.Visible = false
+        minButton.Visible = true
+    else
+        mainFrame.Visible = true
+        minButton.Visible = false
     end
-end)
+end
 
-game:GetService("UserInputService").InputChanged:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseMovement and dragging then
-        local delta = input.Position - dragStart
-        mainFrame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
-    end
-end)
+closeBtn.MouseButton1Click:Connect(toggleUI)
+minButton.MouseButton1Click:Connect(toggleUI)
 
-game:GetService("UserInputService").InputEnded:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton1 then dragging = false end
-end)
+-- DRAGGABLE LOGIC FOR BOTH
+local function makeDraggable(obj)
+    local dragging, dragInput, dragStart, startPos
+    obj.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+            dragging = true
+            dragStart = input.Position
+            startPos = obj.Position
+        end
+    end)
+    UserInputService.InputChanged:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseMovement and dragging then
+            local delta = input.Position - dragStart
+            obj.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+        end
+    end)
+    UserInputService.InputEnded:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then dragging = false end
+    end)
+end
+
+makeDraggable(mainFrame)
+makeDraggable(minButton)
+
+print("✅ Angelo Pogi Hub Loaded Successfully!")
