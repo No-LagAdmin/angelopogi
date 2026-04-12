@@ -19,7 +19,7 @@ screenGui.ResetOnSpawn = false
 screenGui.IgnoreGuiInset = true
 screenGui.Parent = playerGui
 
--- LOGIC VARIABLES
+-- Logic Variables
 local toggles = {
     Crates = false,
     Potions = false,
@@ -27,12 +27,30 @@ local toggles = {
     EquipBest = false
 }
 
--- 1. MINIMIZE BUTTON (The Square UI when Hub is hidden)
+local selections = {
+    Crate = "Heaven",
+    Potion = "Yen"
+}
+
+-- Updated Crate List
+local crateList = {
+    "Heaven", "Music", "Cyber", "Steampunk", "Graffiti", "Vampiric", 
+    "Construction", "Manga", "Samurai", "Royal", "Magma", "Porcelain", 
+    "Hell", "Ghost", "Abandoned", "Haunted", "Celestial", "Red Moon", 
+    "Vortex", "Cursed", "Devilous"
+}
+
+local potionList = {
+    "Yen", "Lucky", "Mutation", "Super Yen", "Super Lucky", 
+    "Rich", "Clover", "Angelic", "Bank", "Evil", "Fairy", "Greed"
+}
+
+-- 1. MINIMIZE BUTTON (Square UI)
 local minButton = Instance.new("TextButton")
 minButton.Name = "MinimizeUI"
-minButton.Size = UDim2.new(0, 140, 0, 45)
-minButton.Position = UDim2.new(0.1, 0, 0.2, 0)
-minButton.BackgroundColor3 = Color3.fromRGB(35, 35, 40)
+minButton.Size = UDim2.new(0, 150, 0, 45)
+minButton.Position = UDim2.new(0.1, 0, 0.1, 0)
+minButton.BackgroundColor3 = Color3.fromRGB(30, 30, 35)
 minButton.BorderSizePixel = 0
 minButton.Text = "  Angelo Bragado"
 minButton.TextColor3 = Color3.fromRGB(255, 255, 255)
@@ -42,44 +60,32 @@ minButton.TextXAlignment = Enum.TextXAlignment.Left
 minButton.Visible = false 
 minButton.Parent = screenGui
 
-local minCorner = Instance.new("UICorner")
+local minCorner = Instance.new("UICorner", minButton)
 minCorner.CornerRadius = UDim.new(0, 10)
-minCorner.Parent = minButton
 
 local statusCircle = Instance.new("Frame")
-statusCircle.Name = "Circle"
 statusCircle.Size = UDim2.new(0, 10, 0, 10)
 statusCircle.Position = UDim2.new(1, -22, 0.5, -5)
 statusCircle.BackgroundColor3 = Color3.fromRGB(0, 255, 150)
 statusCircle.Parent = minButton
-
-local circleCorner = Instance.new("UICorner")
-circleCorner.CornerRadius = UDim.new(1, 0)
-circleCorner.Parent = statusCircle
+Instance.new("UICorner", statusCircle).CornerRadius = UDim.new(1, 0)
 
 -- 2. MAIN HUB FRAME
 local mainFrame = Instance.new("Frame")
 mainFrame.Name = "MainFrame"
-mainFrame.Size = UDim2.new(0, 320, 0, 400)
-mainFrame.Position = UDim2.new(0.5, -160, 0.5, -200)
-mainFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 30)
+mainFrame.Size = UDim2.new(0, 320, 0, 420)
+mainFrame.Position = UDim2.new(0.5, -160, 0.5, -210)
+mainFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 25)
 mainFrame.BorderSizePixel = 0
-mainFrame.Active = true
 mainFrame.Parent = screenGui
-
-local mainCorner = Instance.new("UICorner")
-mainCorner.CornerRadius = UDim.new(0, 15)
-mainCorner.Parent = mainFrame
+Instance.new("UICorner", mainFrame).CornerRadius = UDim.new(0, 12)
 
 -- Header
 local header = Instance.new("Frame")
-header.Size = UDim2.new(1, 0, 0, 50)
-header.BackgroundColor3 = Color3.fromRGB(35, 35, 45)
+header.Size = UDim2.new(1, 0, 0, 55)
+header.BackgroundColor3 = Color3.fromRGB(30, 30, 40)
 header.Parent = mainFrame
-
-local headerCorner = Instance.new("UICorner")
-headerCorner.CornerRadius = UDim.new(0, 15)
-headerCorner.Parent = header
+Instance.new("UICorner", header).CornerRadius = UDim.new(0, 12)
 
 local title = Instance.new("TextLabel")
 title.Size = UDim2.new(1, -60, 1, 0)
@@ -92,7 +98,6 @@ title.TextSize = 16
 title.TextXAlignment = Enum.TextXAlignment.Left
 title.Parent = header
 
--- Minimize Button (In Header)
 local hideBtn = Instance.new("TextButton")
 hideBtn.Size = UDim2.new(0, 40, 0, 40)
 hideBtn.Position = UDim2.new(1, -45, 0.5, -20)
@@ -100,55 +105,118 @@ hideBtn.BackgroundTransparency = 1
 hideBtn.Text = "—"
 hideBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 hideBtn.Font = Enum.Font.GothamBold
-hideBtn.TextSize = 20
+hideBtn.TextSize = 22
 hideBtn.Parent = header
 
 -- Scroll Container
 local container = Instance.new("ScrollingFrame")
 container.Size = UDim2.new(1, -10, 1, -65)
-container.Position = UDim2.new(0, 5, 0, 55)
+container.Position = UDim2.new(0, 5, 0, 60)
 container.BackgroundTransparency = 1
 container.BorderSizePixel = 0
 container.ScrollBarThickness = 2
-container.CanvasSize = UDim2.new(0, 0, 0, 450)
+container.AutomaticCanvasSize = Enum.AutomaticSize.Y
 container.Parent = mainFrame
 
 local layout = Instance.new("UIListLayout")
 layout.Padding = UDim.new(0, 10)
 layout.HorizontalAlignment = Enum.HorizontalAlignment.Center
-layout.SortOrder = Enum.SortOrder.LayoutOrder
 layout.Parent = container
 
--- HELPER: SWITCH CREATOR
-local function createSwitchRow(titleText, callback)
+-- Helper: Create Row with Selector
+local function createDropdownRow(titleText, list, key, toggleCallback)
     local row = Instance.new("Frame")
-    row.Size = UDim2.new(0.95, 0, 0, 65)
-    row.BackgroundColor3 = Color3.fromRGB(35, 35, 40)
+    row.Size = UDim2.new(0.95, 0, 0, 100)
+    row.BackgroundColor3 = Color3.fromRGB(30, 30, 35)
+    row.Parent = container
+    Instance.new("UICorner", row).CornerRadius = UDim.new(0, 10)
+    
+    local label = Instance.new("TextLabel")
+    label.Size = UDim2.new(0.5, 0, 0, 40)
+    label.Position = UDim2.new(0, 12, 0, 5)
+    label.BackgroundTransparency = 1
+    label.Text = titleText
+    label.TextColor3 = Color3.fromRGB(255, 255, 255)
+    label.Font = Enum.Font.GothamBold
+    label.TextSize = 14
+    label.TextXAlignment = Enum.TextXAlignment.Left
+    label.Parent = row
+
+    local track = Instance.new("TextButton")
+    track.Size = UDim2.new(0, 44, 0, 22)
+    track.Position = UDim2.new(1, -55, 0, 14)
+    track.BackgroundColor3 = Color3.fromRGB(50, 50, 55)
+    track.Text = ""
+    track.Parent = row
+    Instance.new("UICorner", track).CornerRadius = UDim.new(1, 0)
+    
+    local knob = Instance.new("Frame")
+    knob.Size = UDim2.new(0, 18, 0, 18)
+    knob.Position = UDim2.new(0, 2, 0.5, -9)
+    knob.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+    knob.Parent = track
+    Instance.new("UICorner", knob).CornerRadius = UDim.new(1, 0)
+
+    local selectBtn = Instance.new("TextButton")
+    selectBtn.Size = UDim2.new(1, -24, 0, 35)
+    selectBtn.Position = UDim2.new(0, 12, 0, 50)
+    selectBtn.BackgroundColor3 = Color3.fromRGB(45, 45, 50)
+    selectBtn.Text = "Select: " .. selections[key]
+    selectBtn.TextColor3 = Color3.fromRGB(200, 200, 200)
+    selectBtn.Font = Enum.Font.Gotham
+    selectBtn.TextSize = 12
+    selectBtn.Parent = row
+    Instance.new("UICorner", selectBtn).CornerRadius = UDim.new(0, 6)
+
+    local active = false
+    track.MouseButton1Click:Connect(function()
+        active = not active
+        local goalPos = active and UDim2.new(1, -20, 0.5, -9) or UDim2.new(0, 2, 0.5, -9)
+        local goalCol = active and Color3.fromRGB(0, 255, 150) or Color3.fromRGB(50, 50, 55)
+        TweenService:Create(knob, TweenInfo.new(0.2), {Position = goalPos}):Play()
+        TweenService:Create(track, TweenInfo.new(0.2), {BackgroundColor3 = goalCol}):Play()
+        toggleCallback(active)
+    end)
+
+    local currentIndex = 1
+    selectBtn.MouseButton1Click:Connect(function()
+        currentIndex = currentIndex + 1
+        if currentIndex > #list then currentIndex = 1 end
+        selections[key] = list[currentIndex]
+        selectBtn.Text = "Select: " .. selections[key]
+    end)
+end
+
+-- Helper: Create Standard Switch
+local function createSwitch(titleText, callback)
+    local row = Instance.new("Frame")
+    row.Size = UDim2.new(0.95, 0, 0, 50)
+    row.BackgroundColor3 = Color3.fromRGB(30, 30, 35)
     row.Parent = container
     Instance.new("UICorner", row).CornerRadius = UDim.new(0, 10)
     
     local label = Instance.new("TextLabel")
     label.Size = UDim2.new(0.6, 0, 1, 0)
-    label.Position = UDim2.new(0, 15, 0, 0)
+    label.Position = UDim2.new(0, 12, 0, 0)
     label.BackgroundTransparency = 1
     label.Text = titleText
-    label.TextColor3 = Color3.fromRGB(240, 240, 240)
+    label.TextColor3 = Color3.fromRGB(200, 200, 200)
     label.Font = Enum.Font.GothamMedium
     label.TextSize = 14
     label.TextXAlignment = Enum.TextXAlignment.Left
     label.Parent = row
     
     local track = Instance.new("TextButton")
-    track.Size = UDim2.new(0, 50, 0, 26)
-    track.Position = UDim2.new(1, -65, 0.5, -13)
-    track.BackgroundColor3 = Color3.fromRGB(60, 60, 65)
+    track.Size = UDim2.new(0, 44, 0, 22)
+    track.Position = UDim2.new(1, -55, 0.5, -11)
+    track.BackgroundColor3 = Color3.fromRGB(50, 50, 55)
     track.Text = ""
     track.Parent = row
     Instance.new("UICorner", track).CornerRadius = UDim.new(1, 0)
     
     local knob = Instance.new("Frame")
-    knob.Size = UDim2.new(0, 20, 0, 20)
-    knob.Position = UDim2.new(0, 3, 0.5, -10)
+    knob.Size = UDim2.new(0, 18, 0, 18)
+    knob.Position = UDim2.new(0, 2, 0.5, -9)
     knob.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
     knob.Parent = track
     Instance.new("UICorner", knob).CornerRadius = UDim.new(1, 0)
@@ -156,51 +224,36 @@ local function createSwitchRow(titleText, callback)
     local active = false
     track.MouseButton1Click:Connect(function()
         active = not active
-        local goalPos = active and UDim2.new(1, -23, 0.5, -10) or UDim2.new(0, 3, 0.5, -10)
-        local goalCol = active and Color3.fromRGB(0, 200, 120) or Color3.fromRGB(60, 60, 65)
-        
+        local goalPos = active and UDim2.new(1, -20, 0.5, -9) or UDim2.new(0, 2, 0.5, -9)
+        local goalCol = active and Color3.fromRGB(0, 255, 150) or Color3.fromRGB(50, 50, 55)
         TweenService:Create(knob, TweenInfo.new(0.2), {Position = goalPos}):Play()
         TweenService:Create(track, TweenInfo.new(0.2), {BackgroundColor3 = goalCol}):Play()
         callback(active)
     end)
 end
 
--- BUTTON ACTIONS
-createSwitchRow("Auto Buy Crates", function(state)
+-- Initialize Features
+createDropdownRow("Auto Buy Crate", crateList, "Crate", function(state)
     toggles.Crates = state
-    if state then
-        task.spawn(function()
-            local list = {"Porcelain", "Hell", "Ghost", "Abandoned", "Haunted", "Celestial", "Red Moon", "Vortex", "Cursed", "Devilous"}
-            while toggles.Crates do
-                for _, c in pairs(list) do
-                    if not toggles.Crates then break end
-                    pcall(function() ReplicatedStorage.Events.Crate.purchase:FireServer(c, 1) end)
-                    task.wait(0.1)
-                end
-                task.wait(2)
-            end
-        end)
-    end
+    task.spawn(function()
+        while toggles.Crates do
+            pcall(function() ReplicatedStorage.Events.Crate.purchase:FireServer(selections.Crate, 1) end)
+            task.wait(1.5)
+        end
+    end)
 end)
 
-createSwitchRow("Auto Buy Potions", function(state)
+createDropdownRow("Auto Buy Potion", potionList, "Potion", function(state)
     toggles.Potions = state
-    if state then
-        task.spawn(function()
-            local pList = {"Yen", "Lucky", "Mutation", "Super Yen", "Super Lucky", "Rich", "Clover", "Angelic", "Bank", "Evil", "Fairy", "Greed"}
-            while toggles.Potions do
-                for _, p in pairs(pList) do
-                    if not toggles.Potions then break end
-                    pcall(function() ReplicatedStorage.Events.Potion.purchase:FireServer(p, 1) end)
-                    task.wait(0.1)
-                end
-                task.wait(2)
-            end
-        end)
-    end
+    task.spawn(function()
+        while toggles.Potions do
+            pcall(function() ReplicatedStorage.Events.Potion.purchase:FireServer(selections.Potion, 1) end)
+            task.wait(1.5)
+        end
+    end)
 end)
 
-createSwitchRow("Anti-AFK", function(state)
+createSwitch("Anti-AFK", function(state)
     toggles.AntiAFK = state
     if state then
         task.spawn(function()
@@ -208,13 +261,13 @@ createSwitchRow("Anti-AFK", function(state)
             while toggles.AntiAFK do
                 VU:CaptureController()
                 VU:ClickButton2(Vector2.new())
-                task.wait(25)
+                task.wait(30)
             end
         end)
     end
 end)
 
-createSwitchRow("Auto Equip Best", function(state)
+createSwitch("Auto Equip Best", function(state)
     toggles.EquipBest = state
     if state then
         task.spawn(function()
@@ -226,27 +279,21 @@ createSwitchRow("Auto Equip Best", function(state)
     end
 end)
 
--- MINIMIZE / MAXIMIZE TOGGLE LOGIC
+-- Minimize/Maximize UI Logic
 local function toggleUI()
-    local mainIsVisible = mainFrame.Visible
-    mainFrame.Visible = not mainIsVisible
-    minButton.Visible = mainIsVisible
+    mainFrame.Visible = not mainFrame.Visible
+    minButton.Visible = not mainFrame.Visible
 end
 
 hideBtn.MouseButton1Click:Connect(toggleUI)
 minButton.MouseButton1Click:Connect(toggleUI)
 
--- UNIVERSAL DRAGGABLE LOGIC (MOBILE & PC)
+-- Touch/Mouse Draggable Function
 local function makeDraggable(obj)
     local dragging, dragStart, startPos
     obj.InputBegan:Connect(function(input)
         if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-            dragging = true
-            dragStart = input.Position
-            startPos = obj.Position
-            input.Changed:Connect(function()
-                if input.UserInputState == Enum.UserInputState.End then dragging = false end
-            end)
+            dragging = true; dragStart = input.Position; startPos = obj.Position
         end
     end)
     UserInputService.InputChanged:Connect(function(input)
@@ -255,9 +302,12 @@ local function makeDraggable(obj)
             obj.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
         end
     end)
+    UserInputService.InputEnded:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then dragging = false end
+    end)
 end
 
 makeDraggable(mainFrame)
 makeDraggable(minButton)
 
-print("🌸 Angelo Pogi Hub Loaded - Compatible with Mobile & PC")
+print("🌸 Angelo Pogi Hub Updated! New Crates Added.")
