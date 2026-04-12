@@ -36,7 +36,7 @@ local potionList = {
     "Rich", "Clover", "Angelic", "Bank", "Evil", "Fairy", "Greed"
 }
 
--- 1. MINIMIZE BUTTON (Angelo Bragado Square)
+-- 1. MINIMIZE BUTTON (Angelo Bragado)
 local minButton = Instance.new("TextButton")
 minButton.Name = "MinimizeUI"
 minButton.Size = UDim2.new(0, 150, 0, 45)
@@ -50,7 +50,6 @@ minButton.TextSize = 13
 minButton.TextXAlignment = Enum.TextXAlignment.Left
 minButton.Visible = false 
 minButton.Parent = screenGui
-
 Instance.new("UICorner", minButton).CornerRadius = UDim.new(0, 10)
 
 local statusCircle = Instance.new("Frame")
@@ -63,14 +62,14 @@ Instance.new("UICorner", statusCircle).CornerRadius = UDim.new(1, 0)
 -- 2. MAIN HUB FRAME
 local mainFrame = Instance.new("Frame")
 mainFrame.Name = "MainFrame"
-mainFrame.Size = UDim2.new(0, 340, 0, 420)
-mainFrame.Position = UDim2.new(0.5, -170, 0.5, -210)
+mainFrame.Size = UDim2.new(0, 340, 0, 400)
+mainFrame.Position = UDim2.new(0.5, -170, 0.5, -200)
 mainFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 25)
 mainFrame.BorderSizePixel = 0
+mainFrame.Active = true
 mainFrame.Parent = screenGui
 Instance.new("UICorner", mainFrame).CornerRadius = UDim.new(0, 12)
 
--- Header
 local header = Instance.new("Frame")
 header.Size = UDim2.new(1, 0, 0, 55)
 header.BackgroundColor3 = Color3.fromRGB(35, 35, 45)
@@ -98,14 +97,16 @@ hideBtn.Font = Enum.Font.GothamBold
 hideBtn.TextSize = 22
 hideBtn.Parent = header
 
--- Main Container
+-- Main Scrolling Container
 local container = Instance.new("ScrollingFrame")
 container.Size = UDim2.new(1, -10, 1, -65)
 container.Position = UDim2.new(0, 5, 0, 60)
 container.BackgroundTransparency = 1
 container.BorderSizePixel = 0
 container.ScrollBarThickness = 2
+container.CanvasSize = UDim2.new(0, 0, 0, 0)
 container.AutomaticCanvasSize = Enum.AutomaticSize.Y
+container.ScrollingDirection = Enum.ScrollingDirection.Y
 container.Parent = mainFrame
 
 local layout = Instance.new("UIListLayout")
@@ -147,14 +148,19 @@ local function createDropdownMenu(titleText, list, selectionTable, toggleKey)
     knob.Parent = track
     Instance.new("UICorner", knob).CornerRadius = UDim.new(1, 0)
 
-    -- THE SCROLLABLE LIST PART
+    -- THE INNER SCROLLABLE LIST
     local listScroll = Instance.new("ScrollingFrame")
-    listScroll.Size = UDim2.new(1, -20, 0, 150)
+    listScroll.Size = UDim2.new(1, -20, 0, 130)
     listScroll.Position = UDim2.new(0, 10, 0, 55)
     listScroll.BackgroundColor3 = Color3.fromRGB(25, 25, 30)
     listScroll.BorderSizePixel = 0
-    listScroll.ScrollBarThickness = 2
+    listScroll.ScrollBarThickness = 4
+    listScroll.ScrollBarImageColor3 = Color3.fromRGB(0, 150, 255)
+    listScroll.CanvasSize = UDim2.new(0, 0, 0, 0)
     listScroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
+    listScroll.ScrollingDirection = Enum.ScrollingDirection.Y
+    listScroll.Active = true
+    listScroll.ZIndex = 5
     listScroll.Parent = outerFrame
     Instance.new("UICorner", listScroll).CornerRadius = UDim.new(0, 8)
 
@@ -170,6 +176,7 @@ local function createDropdownMenu(titleText, list, selectionTable, toggleKey)
         btn.TextColor3 = Color3.fromRGB(180, 180, 180)
         btn.Font = Enum.Font.Gotham
         btn.TextSize = 10
+        btn.ZIndex = 6
         btn.Parent = listScroll
         Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 5)
 
@@ -189,7 +196,9 @@ local function createDropdownMenu(titleText, list, selectionTable, toggleKey)
     local expanded = false
     topBar.MouseButton1Click:Connect(function()
         expanded = not expanded
-        TweenService:Create(outerFrame, TweenInfo.new(0.3), {Size = expanded and UDim2.new(0.95, 0, 0, 215) or UDim2.new(0.95, 0, 0, 50)}):Play()
+        TweenService:Create(outerFrame, TweenInfo.new(0.3), {Size = expanded and UDim2.new(0.95, 0, 0, 200) or UDim2.new(0.95, 0, 0, 50)}):Play()
+        -- Ensure other scrolling frame doesn't block this one
+        listScroll.Visible = expanded
     end)
 
     track.MouseButton1Click:Connect(function()
@@ -212,9 +221,9 @@ local function createDropdownMenu(titleText, list, selectionTable, toggleKey)
                                 ReplicatedStorage.Events.Potion.purchase:FireServer(item, 1)
                             end
                         end)
-                        task.wait(0.2)
+                        task.wait(0.3)
                     end
-                    task.wait(1)
+                    task.wait(0.5)
                 end
             end)
         end
@@ -305,7 +314,7 @@ end
 hideBtn.MouseButton1Click:Connect(toggleUI)
 minButton.MouseButton1Click:Connect(toggleUI)
 
--- DRAGGABLE
+-- DRAGGABLE (TOUCH & MOUSE)
 local function makeDraggable(obj)
     local dragging, dragStart, startPos
     obj.InputBegan:Connect(function(input)
@@ -327,4 +336,4 @@ end
 makeDraggable(mainFrame)
 makeDraggable(minButton)
 
-print("✅ Angelo Pogi Hub: Scrollable Multi-Dropdowns Active!")
+print("✅ Angelo Pogi Hub: Fixed Scrollable Menus Loaded!")
