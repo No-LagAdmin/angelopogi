@@ -27,12 +27,9 @@ local toggles = {
     EquipBest = false
 }
 
-local selections = {
-    Crate = "Heaven",
-    Potion = "Yen"
-}
+local selectedCrates = {}
+local selectedPotions = {}
 
--- Updated Crate List
 local crateList = {
     "Heaven", "Music", "Cyber", "Steampunk", "Graffiti", "Vampiric", 
     "Construction", "Manga", "Samurai", "Royal", "Magma", "Porcelain", 
@@ -45,7 +42,7 @@ local potionList = {
     "Rich", "Clover", "Angelic", "Bank", "Evil", "Fairy", "Greed"
 }
 
--- 1. MINIMIZE BUTTON (Square UI)
+-- 1. MINIMIZE BUTTON (Angelo Bragado)
 local minButton = Instance.new("TextButton")
 minButton.Name = "MinimizeUI"
 minButton.Size = UDim2.new(0, 150, 0, 45)
@@ -73,8 +70,8 @@ Instance.new("UICorner", statusCircle).CornerRadius = UDim.new(1, 0)
 -- 2. MAIN HUB FRAME
 local mainFrame = Instance.new("Frame")
 mainFrame.Name = "MainFrame"
-mainFrame.Size = UDim2.new(0, 320, 0, 420)
-mainFrame.Position = UDim2.new(0.5, -160, 0.5, -210)
+mainFrame.Size = UDim2.new(0, 340, 0, 450)
+mainFrame.Position = UDim2.new(0.5, -170, 0.5, -225)
 mainFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 25)
 mainFrame.BorderSizePixel = 0
 mainFrame.Parent = screenGui
@@ -123,16 +120,16 @@ layout.Padding = UDim.new(0, 10)
 layout.HorizontalAlignment = Enum.HorizontalAlignment.Center
 layout.Parent = container
 
--- Helper: Create Row with Selector
-local function createDropdownRow(titleText, list, key, toggleCallback)
+-- FUNCTION: CREATE MULTI-SELECT ROW
+local function createMultiSelectRow(titleText, list, selectionTable, toggleCallback)
     local row = Instance.new("Frame")
-    row.Size = UDim2.new(0.95, 0, 0, 100)
+    row.Size = UDim2.new(0.95, 0, 0, 150)
     row.BackgroundColor3 = Color3.fromRGB(30, 30, 35)
     row.Parent = container
     Instance.new("UICorner", row).CornerRadius = UDim.new(0, 10)
     
     local label = Instance.new("TextLabel")
-    label.Size = UDim2.new(0.5, 0, 0, 40)
+    label.Size = UDim2.new(0.5, 0, 0, 35)
     label.Position = UDim2.new(0, 12, 0, 5)
     label.BackgroundTransparency = 1
     label.Text = titleText
@@ -144,7 +141,7 @@ local function createDropdownRow(titleText, list, key, toggleCallback)
 
     local track = Instance.new("TextButton")
     track.Size = UDim2.new(0, 44, 0, 22)
-    track.Position = UDim2.new(1, -55, 0, 14)
+    track.Position = UDim2.new(1, -55, 0, 12)
     track.BackgroundColor3 = Color3.fromRGB(50, 50, 55)
     track.Text = ""
     track.Parent = row
@@ -157,37 +154,84 @@ local function createDropdownRow(titleText, list, key, toggleCallback)
     knob.Parent = track
     Instance.new("UICorner", knob).CornerRadius = UDim.new(1, 0)
 
-    local selectBtn = Instance.new("TextButton")
-    selectBtn.Size = UDim2.new(1, -24, 0, 35)
-    selectBtn.Position = UDim2.new(0, 12, 0, 50)
-    selectBtn.BackgroundColor3 = Color3.fromRGB(45, 45, 50)
-    selectBtn.Text = "Select: " .. selections[key]
-    selectBtn.TextColor3 = Color3.fromRGB(200, 200, 200)
-    selectBtn.Font = Enum.Font.Gotham
-    selectBtn.TextSize = 12
-    selectBtn.Parent = row
-    Instance.new("UICorner", selectBtn).CornerRadius = UDim.new(0, 6)
+    local subScroll = Instance.new("ScrollingFrame")
+    subScroll.Size = UDim2.new(1, -20, 0, 95)
+    subScroll.Position = UDim2.new(0, 10, 0, 45)
+    subScroll.BackgroundColor3 = Color3.fromRGB(25, 25, 30)
+    subScroll.BorderSizePixel = 0
+    subScroll.ScrollBarThickness = 2
+    subScroll.Parent = row
+    Instance.new("UICorner", subScroll).CornerRadius = UDim.new(0, 6)
+    
+    local subLayout = Instance.new("UIGridLayout")
+    subLayout.CellSize = UDim2.new(0, 90, 0, 30)
+    subLayout.CellPadding = UDim2.new(0, 5, 0, 5)
+    subLayout.Parent = subScroll
 
-    local active = false
+    for _, itemName in ipairs(list) do
+        local btn = Instance.new("TextButton")
+        btn.Text = itemName
+        btn.BackgroundColor3 = Color3.fromRGB(45, 45, 50)
+        btn.TextColor3 = Color3.fromRGB(150, 150, 150)
+        btn.TextSize = 10
+        btn.Font = Enum.Font.Gotham
+        btn.Parent = subScroll
+        Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 4)
+
+        btn.MouseButton1Click:Connect(function()
+            if selectionTable[itemName] then
+                selectionTable[itemName] = nil
+                TweenService:Create(btn, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(45, 45, 50), TextColor3 = Color3.fromRGB(150, 150, 150)}):Play()
+            else
+                selectionTable[itemName] = true
+                TweenService:Create(btn, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(0, 150, 255), TextColor3 = Color3.fromRGB(255, 255, 255)}):Play()
+            end
+        end)
+    end
+    
+    subScroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
+
     track.MouseButton1Click:Connect(function()
-        active = not active
+        local active = not toggles[titleText:gsub(" ", "")]
+        toggles[titleText:gsub(" ", "")] = active
         local goalPos = active and UDim2.new(1, -20, 0.5, -9) or UDim2.new(0, 2, 0.5, -9)
         local goalCol = active and Color3.fromRGB(0, 255, 150) or Color3.fromRGB(50, 50, 55)
         TweenService:Create(knob, TweenInfo.new(0.2), {Position = goalPos}):Play()
         TweenService:Create(track, TweenInfo.new(0.2), {BackgroundColor3 = goalCol}):Play()
         toggleCallback(active)
     end)
-
-    local currentIndex = 1
-    selectBtn.MouseButton1Click:Connect(function()
-        currentIndex = currentIndex + 1
-        if currentIndex > #list then currentIndex = 1 end
-        selections[key] = list[currentIndex]
-        selectBtn.Text = "Select: " .. selections[key]
-    end)
 end
 
--- Helper: Create Standard Switch
+-- INITIALIZE FEATURES
+createMultiSelectRow("Crates", crateList, selectedCrates, function(state)
+    toggles.Crates = state
+    task.spawn(function()
+        while toggles.Crates do
+            for crate, _ in pairs(selectedCrates) do
+                if not toggles.Crates then break end
+                pcall(function() ReplicatedStorage.Events.Crate.purchase:FireServer(crate, 1) end)
+                task.wait(0.2)
+            end
+            task.wait(1)
+        end
+    end)
+end)
+
+createMultiSelectRow("Potions", potionList, selectedPotions, function(state)
+    toggles.Potions = state
+    task.spawn(function()
+        while toggles.Potions do
+            for potion, _ in pairs(selectedPotions) do
+                if not toggles.Potions then break end
+                pcall(function() ReplicatedStorage.Events.Potion.purchase:FireServer(potion, 1) end)
+                task.wait(0.2)
+            end
+            task.wait(1)
+        end
+    end)
+end)
+
+-- NORMAL SWITCHES
 local function createSwitch(titleText, callback)
     local row = Instance.new("Frame")
     row.Size = UDim2.new(0.95, 0, 0, 50)
@@ -232,27 +276,6 @@ local function createSwitch(titleText, callback)
     end)
 end
 
--- Initialize Features
-createDropdownRow("Auto Buy Crate", crateList, "Crate", function(state)
-    toggles.Crates = state
-    task.spawn(function()
-        while toggles.Crates do
-            pcall(function() ReplicatedStorage.Events.Crate.purchase:FireServer(selections.Crate, 1) end)
-            task.wait(1.5)
-        end
-    end)
-end)
-
-createDropdownRow("Auto Buy Potion", potionList, "Potion", function(state)
-    toggles.Potions = state
-    task.spawn(function()
-        while toggles.Potions do
-            pcall(function() ReplicatedStorage.Events.Potion.purchase:FireServer(selections.Potion, 1) end)
-            task.wait(1.5)
-        end
-    end)
-end)
-
 createSwitch("Anti-AFK", function(state)
     toggles.AntiAFK = state
     if state then
@@ -279,7 +302,7 @@ createSwitch("Auto Equip Best", function(state)
     end
 end)
 
--- Minimize/Maximize UI Logic
+-- MINIMIZE LOGIC
 local function toggleUI()
     mainFrame.Visible = not mainFrame.Visible
     minButton.Visible = not mainFrame.Visible
@@ -288,7 +311,7 @@ end
 hideBtn.MouseButton1Click:Connect(toggleUI)
 minButton.MouseButton1Click:Connect(toggleUI)
 
--- Touch/Mouse Draggable Function
+-- DRAGGABLE
 local function makeDraggable(obj)
     local dragging, dragStart, startPos
     obj.InputBegan:Connect(function(input)
@@ -310,4 +333,4 @@ end
 makeDraggable(mainFrame)
 makeDraggable(minButton)
 
-print("🌸 Angelo Pogi Hub Updated! New Crates Added.")
+print("✅ Angelo Pogi Hub: Multi-Select Ready!")
