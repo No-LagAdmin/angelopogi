@@ -36,7 +36,7 @@ local potionList = {
     "Rich", "Clover", "Angelic", "Bank", "Evil", "Fairy", "Greed"
 }
 
--- 1. MINIMIZE BUTTON (Angelo Bragado)
+-- 1. MINIMIZE BUTTON (Angelo Bragado Square)
 local minButton = Instance.new("TextButton")
 minButton.Name = "MinimizeUI"
 minButton.Size = UDim2.new(0, 150, 0, 45)
@@ -51,8 +51,7 @@ minButton.TextXAlignment = Enum.TextXAlignment.Left
 minButton.Visible = false 
 minButton.Parent = screenGui
 
-local minCorner = Instance.new("UICorner", minButton)
-minCorner.CornerRadius = UDim.new(0, 10)
+Instance.new("UICorner", minButton).CornerRadius = UDim.new(0, 10)
 
 local statusCircle = Instance.new("Frame")
 statusCircle.Size = UDim2.new(0, 10, 0, 10)
@@ -64,8 +63,8 @@ Instance.new("UICorner", statusCircle).CornerRadius = UDim.new(1, 0)
 -- 2. MAIN HUB FRAME
 local mainFrame = Instance.new("Frame")
 mainFrame.Name = "MainFrame"
-mainFrame.Size = UDim2.new(0, 340, 0, 450)
-mainFrame.Position = UDim2.new(0.5, -170, 0.5, -225)
+mainFrame.Size = UDim2.new(0, 340, 0, 420)
+mainFrame.Position = UDim2.new(0.5, -170, 0.5, -210)
 mainFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 25)
 mainFrame.BorderSizePixel = 0
 mainFrame.Parent = screenGui
@@ -99,7 +98,7 @@ hideBtn.Font = Enum.Font.GothamBold
 hideBtn.TextSize = 22
 hideBtn.Parent = header
 
--- Container
+-- Main Container
 local container = Instance.new("ScrollingFrame")
 container.Size = UDim2.new(1, -10, 1, -65)
 container.Position = UDim2.new(0, 5, 0, 60)
@@ -114,7 +113,7 @@ layout.Padding = UDim.new(0, 10)
 layout.HorizontalAlignment = Enum.HorizontalAlignment.Center
 layout.Parent = container
 
--- FUNCTION: CREATE DROPDOWN MULTI-SELECT
+-- FUNCTION: CREATE SCROLLABLE DROPDOWN
 local function createDropdownMenu(titleText, list, selectionTable, toggleKey)
     local outerFrame = Instance.new("Frame")
     outerFrame.Size = UDim2.new(0.95, 0, 0, 50)
@@ -148,16 +147,21 @@ local function createDropdownMenu(titleText, list, selectionTable, toggleKey)
     knob.Parent = track
     Instance.new("UICorner", knob).CornerRadius = UDim.new(1, 0)
 
-    local grid = Instance.new("Frame")
-    grid.Size = UDim2.new(1, -20, 0, 150)
-    grid.Position = UDim2.new(0, 10, 0, 55)
-    grid.BackgroundTransparency = 1
-    grid.Parent = outerFrame
+    -- THE SCROLLABLE LIST PART
+    local listScroll = Instance.new("ScrollingFrame")
+    listScroll.Size = UDim2.new(1, -20, 0, 150)
+    listScroll.Position = UDim2.new(0, 10, 0, 55)
+    listScroll.BackgroundColor3 = Color3.fromRGB(25, 25, 30)
+    listScroll.BorderSizePixel = 0
+    listScroll.ScrollBarThickness = 2
+    listScroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
+    listScroll.Parent = outerFrame
+    Instance.new("UICorner", listScroll).CornerRadius = UDim.new(0, 8)
 
     local gLayout = Instance.new("UIGridLayout")
     gLayout.CellSize = UDim2.new(0, 95, 0, 30)
     gLayout.CellPadding = UDim2.new(0, 5, 0, 5)
-    gLayout.Parent = grid
+    gLayout.Parent = listScroll
 
     for _, itemName in pairs(list) do
         local btn = Instance.new("TextButton")
@@ -166,7 +170,7 @@ local function createDropdownMenu(titleText, list, selectionTable, toggleKey)
         btn.TextColor3 = Color3.fromRGB(180, 180, 180)
         btn.Font = Enum.Font.Gotham
         btn.TextSize = 10
-        btn.Parent = grid
+        btn.Parent = listScroll
         Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 5)
 
         btn.MouseButton1Click:Connect(function()
@@ -185,7 +189,7 @@ local function createDropdownMenu(titleText, list, selectionTable, toggleKey)
     local expanded = false
     topBar.MouseButton1Click:Connect(function()
         expanded = not expanded
-        TweenService:Create(outerFrame, TweenInfo.new(0.3), {Size = expanded and UDim2.new(0.95, 0, 0, 220) or UDim2.new(0.95, 0, 0, 50)}):Play()
+        TweenService:Create(outerFrame, TweenInfo.new(0.3), {Size = expanded and UDim2.new(0.95, 0, 0, 215) or UDim2.new(0.95, 0, 0, 50)}):Play()
     end)
 
     track.MouseButton1Click:Connect(function()
@@ -323,4 +327,4 @@ end
 makeDraggable(mainFrame)
 makeDraggable(minButton)
 
-print("✅ Angelo Pogi Hub: Dropdown Multi-Select Active!")
+print("✅ Angelo Pogi Hub: Scrollable Multi-Dropdowns Active!")
