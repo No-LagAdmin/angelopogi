@@ -11,12 +11,14 @@ local playerGui = player:WaitForChild("PlayerGui")
 -- File Settings
 local filename = "AngeloPogiHub_Config.json"
 
--- Logic Variables
+-- Logic Variables (Defaults)
 local toggles = { Crates = false, Potions = false, AntiAFK = false, EquipBest = false, AutoCollect = false }
 local selectedCrates = {}
 local selectedPotions = {}
 
--- CONFIGURATION SYSTEM FUNCTIONS
+-- ==========================================
+-- FIXED CONFIGURATION SYSTEM
+-- ==========================================
 local function saveConfig()
     local data = {
         Toggles = toggles,
@@ -24,24 +26,36 @@ local function saveConfig()
         Potions = selectedPotions
     }
     local success, result = pcall(function()
-        writefile(filename, HttpService:JSONEncode(data))
+        if writefile then
+            writefile(filename, HttpService:JSONEncode(data))
+        end
     end)
-    if success then print("✅ Config Saved!") else warn("❌ Save Failed") end
+    if success then print("✅ Config Saved!") else warn("❌ Save Failed: " .. tostring(result)) end
 end
 
 local function loadConfig()
-    if isfile(filename) then
+    local exists = pcall(function() return isfile(filename) end)
+    if exists and isfile(filename) then
         local success, result = pcall(function()
             local decoded = HttpService:JSONDecode(readfile(filename))
-            toggles = decoded.Toggles or toggles
-            selectedCrates = decoded.Crates or selectedCrates
-            selectedPotions = decoded.Potions or selectedPotions
+            -- Merge Toggles
+            if decoded.Toggles then
+                for k, v in pairs(decoded.Toggles) do toggles[k] = v end
+            end
+            -- Merge Crates
+            if decoded.Crates then
+                for k, v in pairs(decoded.Crates) do selectedCrates[k] = v end
+            end
+            -- Merge Potions
+            if decoded.Potions then
+                for k, v in pairs(decoded.Potions) do selectedPotions[k] = v end
+            end
         end)
-        if success then print("✅ Config Loaded!") else warn("❌ Load Failed") end
+        if success then print("✅ Config Loaded!") else warn("❌ Load Failed: " .. tostring(result)) end
     end
 end
 
--- Load existing config before UI builds
+-- Load existing config before building UI
 loadConfig()
 
 -- Cleanup
@@ -284,7 +298,7 @@ local function createSwitch(titleText, toggleKey, callback)
     if toggles[toggleKey] then task.spawn(function() callback(true) end) end
 end
 
--- INITIALIZE ELEMENTS
+-- INITIALIZE DROPDOWNS
 createDropdownMenu("Select Crates", crateList, selectedCrates, "Crates")
 createDropdownMenu("Select Potions", potionList, selectedPotions, "Potions")
 
