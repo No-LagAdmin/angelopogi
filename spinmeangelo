@@ -35,7 +35,7 @@ _G.selectedPotions = {}
 loadConfig()
 
 -- ==========================================
--- CRASH-PROOF COLLECTOR (Plot 1 Only)
+-- DEEP-SCAN COLLECTOR (Fixed nil index issues)
 -- ==========================================
 task.spawn(function()
     while true do
@@ -43,31 +43,30 @@ task.spawn(function()
             pcall(function()
                 local char = player.Character
                 local root = char and char:FindFirstChild("HumanoidRootPart")
-                
-                -- Safety Check: Ensure Plots and Plot1 exist in Workspace
-                local plotsFolder = workspace:FindFirstChild("Plots")
-                local plot1 = plotsFolder and plotsFolder:FindFirstChild("Plot1")
+                local plots = workspace:FindFirstChild("Plots")
+                local plot1 = plots and plots:FindFirstChild("Plot1")
                 
                 if plot1 and root then
                     local slots = plot1:FindFirstChild("Slots")
                     if slots then
                         for i = 1, 12 do
-                            local slotName = tostring(i)
-                            local slot = slots:FindFirstChild(slotName)
-                            local btn = slot and slot:FindFirstChild("Button")
-                            
-                            -- CRITICAL FIX: Only fire if the button and its TouchInterest exist
-                            if btn and btn:IsA("BasePart") and btn:FindFirstChildOfClass("TouchInterest") then
-                                firetouchinterest(btn, root, 0)
-                                task.wait(0.03) -- Tiny delay to prevent physics lag
-                                firetouchinterest(btn, root, 1)
+                            local slot = slots:FindFirstChild(tostring(i))
+                            if slot then
+                                -- Scans the slot for any part that can be touched
+                                for _, part in pairs(slot:GetDescendants()) do
+                                    if part:IsA("BasePart") and part:FindFirstChildOfClass("TouchInterest") then
+                                        firetouchinterest(part, root, 0)
+                                        task.wait(0.02) -- Minimum delay to prevent crash
+                                        firetouchinterest(part, root, 1)
+                                    end
+                                end
                             end
                         end
                     end
                 end
             end)
         end
-        task.wait(5) -- 5-second cooldown as requested
+        task.wait(5) -- Cooldown per image request
     end
 end)
 
@@ -93,7 +92,7 @@ task.spawn(function()
 end)
 
 -- ==========================================
--- UI DESIGN (FINAL V5.1)
+-- UI DESIGN (ALIGNED & FINALIZED)
 -- ==========================================
 if playerGui:FindFirstChild("AngeloFinalHub") then playerGui.AngeloFinalHub:Destroy() end
 
@@ -201,4 +200,4 @@ player.Idled:Connect(function()
     end
 end)
 
-print("✅ Angelo Final Hub v5.1 (Crash-Fix) Ready.")
+print("✅ Angelo Final Hub v5.2 (Deep Search Fix) Loaded.")
