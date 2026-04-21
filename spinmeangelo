@@ -3,9 +3,46 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TweenService = game:GetService("TweenService")
 local UserInputService = game:GetService("UserInputService")
+local HttpService = game:GetService("HttpService")
 
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
+
+-- File Settings
+local filename = "AngeloPogiHub_Config.json"
+
+-- Logic Variables
+local toggles = { Crates = false, Potions = false, AntiAFK = false, EquipBest = false, AutoCollect = false }
+local selectedCrates = {}
+local selectedPotions = {}
+
+-- CONFIGURATION SYSTEM FUNCTIONS
+local function saveConfig()
+    local data = {
+        Toggles = toggles,
+        Crates = selectedCrates,
+        Potions = selectedPotions
+    }
+    local success, result = pcall(function()
+        writefile(filename, HttpService:JSONEncode(data))
+    end)
+    if success then print("✅ Config Saved!") else warn("❌ Save Failed") end
+end
+
+local function loadConfig()
+    if isfile(filename) then
+        local success, result = pcall(function()
+            local decoded = HttpService:JSONDecode(readfile(filename))
+            toggles = decoded.Toggles or toggles
+            selectedCrates = decoded.Crates or selectedCrates
+            selectedPotions = decoded.Potions or selectedPotions
+        end)
+        if success then print("✅ Config Loaded!") else warn("❌ Load Failed") end
+    end
+end
+
+-- Load existing config before UI builds
+loadConfig()
 
 -- Cleanup
 if playerGui:FindFirstChild("AngeloPogiHub") then
@@ -18,11 +55,6 @@ screenGui.Name = "AngeloPogiHub"
 screenGui.ResetOnSpawn = false
 screenGui.IgnoreGuiInset = true
 screenGui.Parent = playerGui
-
--- Logic Variables
-local toggles = { Crates = false, Potions = false, AntiAFK = false, EquipBest = false, AutoCollect = false }
-local selectedCrates = {}
-local selectedPotions = {}
 
 local crateList = {
     "Heaven", "Music", "Cyber", "Steampunk", "Graffiti", "Vampiric", 
@@ -135,14 +167,14 @@ local function createDropdownMenu(titleText, list, selectionTable, toggleKey)
     local track = Instance.new("TextButton")
     track.Size = UDim2.new(0, 44, 0, 22)
     track.Position = UDim2.new(1, -55, 0, 14)
-    track.BackgroundColor3 = Color3.fromRGB(60, 60, 65)
+    track.BackgroundColor3 = toggles[toggleKey] and Color3.fromRGB(0, 255, 150) or Color3.fromRGB(60, 60, 65)
     track.Text = ""
     track.Parent = outerFrame
     Instance.new("UICorner", track).CornerRadius = UDim.new(1, 0)
     
     local knob = Instance.new("Frame")
     knob.Size = UDim2.new(0, 18, 0, 18)
-    knob.Position = UDim2.new(0, 2, 0.5, -9)
+    knob.Position = toggles[toggleKey] and UDim2.new(1, -20, 0.5, -9) or UDim2.new(0, 2, 0.5, -9)
     knob.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
     knob.Parent = track
     Instance.new("UICorner", knob).CornerRadius = UDim.new(1, 0)
@@ -164,8 +196,8 @@ local function createDropdownMenu(titleText, list, selectionTable, toggleKey)
     for _, itemName in pairs(list) do
         local btn = Instance.new("TextButton")
         btn.Text = itemName
-        btn.BackgroundColor3 = Color3.fromRGB(45, 45, 50)
-        btn.TextColor3 = Color3.fromRGB(180, 180, 180)
+        btn.BackgroundColor3 = selectionTable[itemName] and Color3.fromRGB(0, 120, 255) or Color3.fromRGB(45, 45, 50)
+        btn.TextColor3 = selectionTable[itemName] and Color3.fromRGB(255, 255, 255) or Color3.fromRGB(180, 180, 180)
         btn.Font = Enum.Font.Gotham
         btn.TextSize = 10
         btn.Parent = listScroll
@@ -181,6 +213,7 @@ local function createDropdownMenu(titleText, list, selectionTable, toggleKey)
                 btn.BackgroundColor3 = Color3.fromRGB(0, 120, 255)
                 btn.TextColor3 = Color3.fromRGB(255, 255, 255)
             end
+            saveConfig()
         end)
     end
 
@@ -193,35 +226,17 @@ local function createDropdownMenu(titleText, list, selectionTable, toggleKey)
 
     track.MouseButton1Click:Connect(function()
         toggles[toggleKey] = not toggles[toggleKey]
+        saveConfig()
         local active = toggles[toggleKey]
         local goalPos = active and UDim2.new(1, -20, 0.5, -9) or UDim2.new(0, 2, 0.5, -9)
         local goalCol = active and Color3.fromRGB(0, 255, 150) or Color3.fromRGB(60, 60, 65)
         TweenService:Create(knob, TweenInfo.new(0.2), {Position = goalPos}):Play()
         TweenService:Create(track, TweenInfo.new(0.2), {BackgroundColor3 = goalCol}):Play()
-        
-        if active then
-            task.spawn(function()
-                while toggles[toggleKey] do
-                    for item, _ in pairs(selectionTable) do
-                        if not toggles[toggleKey] then break end
-                        pcall(function() 
-                            if toggleKey == "Crates" then
-                                ReplicatedStorage.Events.Crate.purchase:FireServer(item, 1)
-                            else
-                                ReplicatedStorage.Events.Potion.purchase:FireServer(item, 1)
-                            end
-                        end)
-                        task.wait(0.3)
-                    end
-                    task.wait(0.5)
-                end
-            end)
-        end
     end)
 end
 
 -- FUNCTION: STANDARD SWITCH
-local function createSwitch(titleText, callback)
+local function createSwitch(titleText, toggleKey, callback)
     local row = Instance.new("Frame")
     row.Size = UDim2.new(0.95, 0, 0, 50)
     row.BackgroundColor3 = Color3.fromRGB(30, 30, 35)
@@ -242,100 +257,108 @@ local function createSwitch(titleText, callback)
     local track = Instance.new("TextButton")
     track.Size = UDim2.new(0, 44, 0, 22)
     track.Position = UDim2.new(1, -55, 0.5, -11)
-    track.BackgroundColor3 = Color3.fromRGB(60, 60, 65)
+    track.BackgroundColor3 = toggles[toggleKey] and Color3.fromRGB(0, 255, 150) or Color3.fromRGB(60, 60, 65)
     track.Text = ""
     track.Parent = row
     Instance.new("UICorner", track).CornerRadius = UDim.new(1, 0)
     
     local knob = Instance.new("Frame")
     knob.Size = UDim2.new(0, 18, 0, 18)
-    knob.Position = UDim2.new(0, 2, 0.5, -9)
+    knob.Position = toggles[toggleKey] and UDim2.new(1, -20, 0.5, -9) or UDim2.new(0, 2, 0.5, -9)
     knob.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
     knob.Parent = track
     Instance.new("UICorner", knob).CornerRadius = UDim.new(1, 0)
     
-    local active = false
     track.MouseButton1Click:Connect(function()
-        active = not active
+        toggles[toggleKey] = not toggles[toggleKey]
+        saveConfig()
+        local active = toggles[toggleKey]
         local goalPos = active and UDim2.new(1, -20, 0.5, -9) or UDim2.new(0, 2, 0.5, -9)
         local goalCol = active and Color3.fromRGB(0, 255, 150) or Color3.fromRGB(60, 60, 65)
         TweenService:Create(knob, TweenInfo.new(0.2), {Position = goalPos}):Play()
         TweenService:Create(track, TweenInfo.new(0.2), {BackgroundColor3 = goalCol}):Play()
         callback(active)
     end)
+    
+    -- Auto-run if enabled from load
+    if toggles[toggleKey] then task.spawn(function() callback(true) end) end
 end
 
 -- INITIALIZE ELEMENTS
 createDropdownMenu("Select Crates", crateList, selectedCrates, "Crates")
 createDropdownMenu("Select Potions", potionList, selectedPotions, "Potions")
 
--- THE NEW FEATURE: AUTO COLLECT MONEY
-createSwitch("Auto Collect Money", function(state)
-    toggles.AutoCollect = state
-    if state then
-        task.spawn(function()
-            while toggles.AutoCollect do
-                -- Logic for Plots 1-12
-                for p = 1, 12 do
-                    local plot = workspace.Plots:FindFirstChild("Plot" .. p)
-                    if plot then
-                        -- Logic for Slots 1-12
-                        for s = 1, 12 do
-                            task.spawn(function()
-                                local slot = plot.Slots:FindFirstChild(tostring(s))
-                                if slot and slot:FindFirstChild("Button") then
-                                    local btn = slot.Button
-                                    local root = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
-                                    
-                                    -- Check for TouchInterest and simulation function
-                                    if root and firetouchinterest then
-                                        firetouchinterest(btn, root, 0)
-                                        task.wait()
-                                        firetouchinterest(btn, root, 3)
-                                    end
-                                end
-                            end)
+-- LOOPS FOR DROPDOWNS
+task.spawn(function()
+    while true do
+        if toggles.Crates then
+            for item, _ in pairs(selectedCrates) do
+                pcall(function() ReplicatedStorage.Events.Crate.purchase:FireServer(item, 1) end)
+                task.wait(0.3)
+            end
+        end
+        task.wait(0.5)
+    end
+end)
+
+task.spawn(function()
+    while true do
+        if toggles.Potions then
+            for item, _ in pairs(selectedPotions) do
+                pcall(function() ReplicatedStorage.Events.Potion.purchase:FireServer(item, 1) end)
+                task.wait(0.3)
+            end
+        end
+        task.wait(0.5)
+    end
+end)
+
+-- SWITCHES
+createSwitch("Auto Collect Money", "AutoCollect", function(state)
+    while toggles.AutoCollect do
+        for p = 1, 12 do
+            local plot = workspace.Plots:FindFirstChild("Plot" .. p)
+            if plot then
+                for s = 1, 12 do
+                    task.spawn(function()
+                        local slot = plot.Slots:FindFirstChild(tostring(s))
+                        if slot and slot:FindFirstChild("Button") then
+                            local root = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+                            if root and firetouchinterest then
+                                firetouchinterest(slot.Button, root, 0)
+                                task.wait()
+                                firetouchinterest(slot.Button, root, 1)
+                            end
                         end
-                    end
+                    end)
                 end
-                task.wait(1)
             end
-        end)
+        end
+        task.wait(1)
     end
 end)
 
-createSwitch("Anti-AFK", function(state)
-    toggles.AntiAFK = state
-    if state then
-        task.spawn(function()
-            local VU = game:GetService("VirtualUser")
-            while toggles.AntiAFK do
-                VU:CaptureController()
-                VU:ClickButton2(Vector2.new())
-                task.wait(30)
-            end
-        end)
+createSwitch("Anti-AFK", "AntiAFK", function(state)
+    local VU = game:GetService("VirtualUser")
+    while toggles.AntiAFK do
+        VU:CaptureController()
+        VU:ClickButton2(Vector2.new())
+        task.wait(30)
     end
 end)
 
-createSwitch("Auto Equip Best", function(state)
-    toggles.EquipBest = state
-    if state then
-        task.spawn(function()
-            while toggles.EquipBest do
-                pcall(function() ReplicatedStorage.Events.Plot.equipBest:InvokeServer() end)
-                task.wait(30)
-            end
-        end)
+createSwitch("Auto Equip Best", "EquipBest", function(state)
+    while toggles.EquipBest do
+        pcall(function() ReplicatedStorage.Events.Plot.equipBest:InvokeServer() end)
+        task.wait(30)
     end
 end)
 
--- UI LOGIC
+-- UI LOGIC & DRAG
 local function toggleUI()
     mainFrame.Visible = not mainFrame.Visible
     minButton.Visible = not mainFrame.Visible
 end
-
 hideBtn.MouseButton1Click:Connect(toggleUI)
 minButton.MouseButton1Click:Connect(toggleUI)
 
@@ -356,8 +379,7 @@ local function makeDraggable(obj)
         if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then dragging = false end
     end)
 end
-
 makeDraggable(mainFrame)
 makeDraggable(minButton)
 
-print("✅ Angelo Pogi Hub Loaded with Auto Collect Money!")
+print("✅ Angelo Pogi Hub Loaded & Config System Ready!")
