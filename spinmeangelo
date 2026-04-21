@@ -29,22 +29,36 @@ local function loadConfig()
     end
 end
 
-_G.toggles = { AutoCollect = false, AntiAFK = false, Crates = false, Potions = false }
+-- Global Logic Variables
+_G.toggles = { AutoCollect = false, AntiAFK = false, Crates = false, Potions = false, EquipBest = false }
 _G.selectedCrates = {}
 _G.selectedPotions = {}
 loadConfig()
 
 -- ==========================================
--- DEEP-SCAN COLLECTOR (Fixed nil index issues)
+-- BACKEND LOGIC LOOPS
 -- ==========================================
+
+-- AUTO EQUIP BEST (Every 25 Seconds)
+task.spawn(function()
+    while true do
+        if _G.toggles.EquipBest then
+            pcall(function()
+                ReplicatedStorage.Events.Plot.equipBest:FireServer()
+            end)
+        end
+        task.wait(25)
+    end
+end)
+
+-- AUTO COLLECT YEN (Deep-Scan Mode)
 task.spawn(function()
     while true do
         if _G.toggles.AutoCollect then
             pcall(function()
                 local char = player.Character
                 local root = char and char:FindFirstChild("HumanoidRootPart")
-                local plots = workspace:FindFirstChild("Plots")
-                local plot1 = plots and plots:FindFirstChild("Plot1")
+                local plot1 = workspace:FindFirstChild("Plots") and workspace.Plots:FindFirstChild("Plot1")
                 
                 if plot1 and root then
                     local slots = plot1:FindFirstChild("Slots")
@@ -52,11 +66,10 @@ task.spawn(function()
                         for i = 1, 12 do
                             local slot = slots:FindFirstChild(tostring(i))
                             if slot then
-                                -- Scans the slot for any part that can be touched
                                 for _, part in pairs(slot:GetDescendants()) do
                                     if part:IsA("BasePart") and part:FindFirstChildOfClass("TouchInterest") then
                                         firetouchinterest(part, root, 0)
-                                        task.wait(0.02) -- Minimum delay to prevent crash
+                                        task.wait(0.02)
                                         firetouchinterest(part, root, 1)
                                     end
                                 end
@@ -66,13 +79,11 @@ task.spawn(function()
                 end
             end)
         end
-        task.wait(5) -- Cooldown per image request
+        task.wait(5) -- 5-second interval
     end
 end)
 
--- ==========================================
 -- AUTO BUY/USE LOOP
--- ==========================================
 task.spawn(function()
     while true do
         if _G.toggles.Crates then
@@ -92,7 +103,7 @@ task.spawn(function()
 end)
 
 -- ==========================================
--- UI DESIGN (ALIGNED & FINALIZED)
+-- UI DESIGN (FINAL v5.3)
 -- ==========================================
 if playerGui:FindFirstChild("AngeloFinalHub") then playerGui.AngeloFinalHub:Destroy() end
 
@@ -170,14 +181,16 @@ end
 local crates = {"Hell", "Heaven", "Music", "Cyber", "Steampunk", "Graffiti", "Vampiric", "Construction", "Manga", "Samurai", "Royal", "Magma", "Ghost", "Abandoned", "Haunted", "Celestial", "Red Moon", "Vortex", "Cursed", "Devilous"}
 local potions = {"Yen", "Lucky", "Mutation", "Super Yen", "Rich", "Clover", "Angelic", "Bank", "Greed"}
 
+-- UI Buttons
 makeToggle("Auto Collect Yen (Plot 1 Only)", "AutoCollect")
+makeToggle("Auto Equip Best (Every 25s)", "EquipBest")
 makeToggle("Anti-AFK System", "AntiAFK")
 makeToggle("Enable Auto Buy Crates", "Crates")
 makeGrid("Select Crates", crates, _G.selectedCrates)
 makeToggle("Enable Auto Use Potions", "Potions")
 makeGrid("Select Potions", potions, _G.selectedPotions)
 
--- Dragging & Minimize
+-- Dragging & Minimize Logic
 local dragging, dragStart, startPos
 header.InputBegan:Connect(function(i) if i.UserInputType == Enum.UserInputType.MouseButton1 then dragging = true; dragStart = i.Position; startPos = main.Position end end)
 UserInputService.InputChanged:Connect(function(i) if dragging and i.UserInputType == Enum.UserInputType.MouseMovement then local delta = i.Position - dragStart; main.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y) end end)
@@ -200,4 +213,4 @@ player.Idled:Connect(function()
     end
 end)
 
-print("✅ Angelo Final Hub v5.2 (Deep Search Fix) Loaded.")
+print("✅ Angelo Final Hub v5.3 (Equip Best Added) Loaded.")
