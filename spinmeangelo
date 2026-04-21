@@ -144,10 +144,10 @@ local function makeGrid(txt, list, tab)
 end
 
 -- UI Sections
-local crates = {"Heaven", "Music", "Cyber", "Steampunk", "Graffiti", "Vampiric", "Manga", "Samurai", "Royal", "Magma", "Hell", "Celestial", "Vortex", "Cursed"}
+local crates = {"Heaven", "Music", "Cyber", "Steampunk", "Graffiti", "Vampiric", "Manga", "Samurai", "Royal", "Magma", "Hell", "Celestial", "Vortex", "Cursed","Devilous"}
 local potions = {"Yen", "Lucky", "Mutation", "Super Yen", "Rich", "Clover", "Angelic", "Bank", "Greed"}
 
-makeToggle("Auto Collect (Plot 1 Only)", "AutoCollect")
+makeToggle("Auto Collect BETA", "AutoCollect")
 makeToggle("Anti-AFK System", "AntiAFK")
 makeToggle("Enable Auto Buy Crates", "Crates")
 makeGrid("Select Crates", crates, selectedCrates)
