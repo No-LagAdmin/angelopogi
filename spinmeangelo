@@ -1,70 +1,67 @@
--- Wave Paid Compatibility
+-- WAVE PAID CORE-LEVEL EXECUTION
 if not game:IsLoaded() then game.Loaded:Wait() end
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local CoreGui = game:GetService("CoreGui")
+local HttpService = game:GetService("HttpService")
 local player = Players.LocalPlayer
-local playerGui = player:WaitForChild("PlayerGui")
 
--- Logic States
+-- ==========================================
+-- CONFIG SYSTEM
+-- ==========================================
 _G.toggles = { AutoCollect = false, AntiAFK = false, Crates = false, Potions = false, EquipBest = false }
 _G.selectedCrates = {}
 _G.selectedPotions = {}
+
+local fileName = "AngeloHub_Config.json"
+
+local function saveConfig()
+    local data = {toggles = _G.toggles, crates = _G.selectedCrates, potions = _G.selectedPotions}
+    pcall(function() writefile(fileName, HttpService:JSONEncode(data)) end)
+end
+
+local function loadConfig()
+    pcall(function()
+        if isfile(fileName) then
+            local data = HttpService:JSONDecode(readfile(fileName))
+            if data.toggles then _G.toggles = data.toggles end
+            if data.crates then _G.selectedCrates = data.crates end
+            if data.potions then _G.selectedPotions = data.potions end
+        end
+    end)
+end
+loadConfig()
+
+-- Cleanup
+for _, oldUI in pairs(CoreGui:GetChildren()) do
+    if oldUI.Name == "AngeloFinalHub" then oldUI:Destroy() end
+end
 
 -- ==========================================
 -- BACKEND LOOPS
 -- ==========================================
 
 task.spawn(function()
-    while task.wait(5) do
-        if _G.toggles.AutoCollect then
-            pcall(function()
-                local root = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
-                local slots = workspace.Plots.Plot1.Slots
-                if root and slots then
-                    for i = 1, 12 do
-                        local btn = slots[tostring(i)]:FindFirstChild("Button")
-                        if btn then firetouchinterest(btn, root, 0) task.wait(0.01) firetouchinterest(btn, root, 1) end
-                    end
-                end
-            end)
-        end
-    end
-end)
-
-task.spawn(function()
-    while task.wait(25) do
-        if _G.toggles.EquipBest then
-            pcall(function()
-                local remote = ReplicatedStorage.Events.Plot.equipBest
-                if remote:IsA("RemoteFunction") then remote:InvokeServer() else remote:FireServer() end
-            end)
-        end
-    end
-end)
-
-task.spawn(function()
     while task.wait(1.5) do
         if _G.toggles.Crates then
             for crate, state in pairs(_G.selectedCrates) do
-                if state then ReplicatedStorage.Events.Crate.purchase:FireServer(crate, 1) task.wait(0.3) end
+                if state then ReplicatedStorage.Events.Crate.purchase:FireServer(crate, 1) task.wait(0.1) end
             end
         end
         if _G.toggles.Potions then
             for pot, state in pairs(_G.selectedPotions) do
-                if state then ReplicatedStorage.Events.Potion.purchase:FireServer(pot, 1) task.wait(0.3) end
+                if state then ReplicatedStorage.Events.Potion.purchase:FireServer(pot, 1) task.wait(0.1) end
             end
         end
     end
 end)
 
 -- ==========================================
--- UI CONSTRUCTION (Fixed Layout & Grid)
+-- UI CONSTRUCTION (FIXED HEADER POSITIONING)
 -- ==========================================
-if playerGui:FindFirstChild("AngeloFinalHub") then playerGui.AngeloFinalHub:Destroy() end
-
-local sg = Instance.new("ScreenGui", playerGui)
-sg.Name = "AngeloFinalHub"; sg.ResetOnSpawn = false
+local sg = Instance.new("ScreenGui", CoreGui)
+sg.Name = "AngeloFinalHub"; sg.DisplayOrder = 999
 
 local main = Instance.new("Frame", sg)
 main.Size = UDim2.new(0, 380, 0, 520); main.Position = UDim2.new(0.5, -190, 0.5, -260)
@@ -77,67 +74,73 @@ Instance.new("UICorner", header)
 
 local title = Instance.new("TextLabel", header)
 title.Size = UDim2.new(1, 0, 1, 0); title.BackgroundTransparency = 1
-title.Text = "ANGELO HUB v6.2 (FINAL)"; title.TextColor3 = Color3.fromRGB(0, 255, 150)
+title.Text = "Angelo FULL POWER MAX"; title.TextColor3 = Color3.fromRGB(0, 255, 150)
 title.Font = Enum.Font.GothamBold; title.TextSize = 15
 
 local scroll = Instance.new("ScrollingFrame", main)
 scroll.Size = UDim2.new(1, -10, 1, -55); scroll.Position = UDim2.new(0, 5, 0, 50)
 scroll.BackgroundTransparency = 1; scroll.ScrollBarThickness = 3
 scroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
-local list = Instance.new("UIListLayout", scroll); list.Padding = UDim.new(0, 12); list.HorizontalAlignment = Enum.HorizontalAlignment.Center
+local list = Instance.new("UIListLayout", scroll); list.Padding = UDim.new(0, 15); list.HorizontalAlignment = Enum.HorizontalAlignment.Center
 
-local function makeToggle(txt, key)
-    local btn = Instance.new("TextButton", scroll)
-    btn.Size = UDim2.new(0.94, 0, 0, 42)
-    btn.BackgroundColor3 = Color3.fromRGB(30, 30, 40); btn.Text = txt; btn.TextColor3 = Color3.new(1,1,1); btn.Font = Enum.Font.Gotham
+local function makeToggle(txt, key, parent)
+    local btn = Instance.new("TextButton", parent or scroll)
+    btn.Size = UDim2.new(0.94, 0, 0, 40)
+    btn.BackgroundColor3 = _G.toggles[key] and Color3.fromRGB(0, 180, 90) or Color3.fromRGB(30, 30, 40)
+    btn.Text = txt; btn.TextColor3 = Color3.new(1,1,1); btn.Font = Enum.Font.Gotham
     Instance.new("UICorner", btn)
     btn.MouseButton1Click:Connect(function()
         _G.toggles[key] = not _G.toggles[key]
         btn.BackgroundColor3 = _G.toggles[key] and Color3.fromRGB(0, 180, 90) or Color3.fromRGB(30, 30, 40)
+        saveConfig()
     end)
 end
 
-local function makeSelectionArea(labelTxt, items, target)
-    local titleLab = Instance.new("TextLabel", scroll)
-    titleLab.Size = UDim2.new(0.9, 0, 0, 20); titleLab.Text = labelTxt; titleLab.TextColor3 = Color3.fromRGB(0, 255, 150)
-    titleLab.BackgroundTransparency = 1; titleLab.Font = Enum.Font.GothamBold; titleLab.TextSize = 13
+local function makeSection(titleTxt, toggleKey, items, targetTable)
+    local sectionContainer = Instance.new("Frame", scroll)
+    sectionContainer.Size = UDim2.new(0.94, 0, 0, 240); sectionContainer.BackgroundTransparency = 1
+    local sList = Instance.new("UIListLayout", sectionContainer); sList.Padding = UDim.new(0, 8); sList.HorizontalAlignment = Enum.HorizontalAlignment.Center
 
-    local container = Instance.new("Frame", scroll)
-    container.Size = UDim2.new(0.94, 0, 0, 160); container.BackgroundColor3 = Color3.fromRGB(20, 20, 28)
-    Instance.new("UICorner", container)
+    -- 1. HEADER (STRICTLY ON TOP)
+    local titleLab = Instance.new("TextLabel", sectionContainer)
+    titleLab.Size = UDim2.new(1, 0, 0, 25); titleLab.Text = "--- SELECT " .. titleTxt:upper() .. " ---"
+    titleLab.TextColor3 = Color3.fromRGB(0, 255, 150); titleLab.BackgroundTransparency = 1; titleLab.Font = Enum.Font.GothamBold; titleLab.TextSize = 13
 
-    local internalScroll = Instance.new("ScrollingFrame", container)
-    internalScroll.Size = UDim2.new(1, -10, 1, -10); internalScroll.Position = UDim2.new(0, 5, 0, 5)
-    internalScroll.BackgroundTransparency = 1; internalScroll.ScrollBarThickness = 2; internalScroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
-    
-    local grid = Instance.new("UIGridLayout", internalScroll)
-    grid.CellSize = UDim2.new(0, 105, 0, 32)
-    grid.CellPadding = UDim2.new(0, 6, 0, 6) -- Corrected Padding property
-    grid.HorizontalAlignment = Enum.HorizontalAlignment.Center
+    -- 2. SELECTION GRID (MIDDLE)
+    local gridFrame = Instance.new("Frame", sectionContainer)
+    gridFrame.Size = UDim2.new(1, 0, 0, 150); gridFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 28)
+    Instance.new("UICorner", gridFrame)
+
+    local iScroll = Instance.new("ScrollingFrame", gridFrame)
+    iScroll.Size = UDim2.new(1, -10, 1, -10); iScroll.Position = UDim2.new(0, 5, 0, 5); iScroll.BackgroundTransparency = 1; iScroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
+    local grid = Instance.new("UIGridLayout", iScroll); grid.CellSize = UDim2.new(0, 100, 0, 30); grid.CellPadding = UDim2.new(0, 5, 0, 5)
 
     for _, name in pairs(items) do
-        local b = Instance.new("TextButton", internalScroll)
-        b.Text = name; b.TextSize = 10; b.TextColor3 = Color3.new(1,1,1); b.BackgroundColor3 = Color3.fromRGB(40, 40, 50); Instance.new("UICorner", b)
+        local b = Instance.new("TextButton", iScroll)
+        b.Text = name; b.TextSize = 10; b.TextColor3 = Color3.new(1,1,1)
+        b.BackgroundColor3 = targetTable[name] and Color3.fromRGB(0, 120, 255) or Color3.fromRGB(40, 40, 50)
+        Instance.new("UICorner", b)
         b.MouseButton1Click:Connect(function()
-            target[name] = not target[name]
-            b.BackgroundColor3 = target[name] and Color3.fromRGB(0, 120, 255) or Color3.fromRGB(40, 40, 50)
+            targetTable[name] = not targetTable[name]
+            b.BackgroundColor3 = targetTable[name] and Color3.fromRGB(0, 120, 255) or Color3.fromRGB(40, 40, 50)
+            saveConfig()
         end)
     end
+
+    -- 3. ENABLE TOGGLE (BOTTOM OF SECTION)
+    makeToggle("Enable Auto " .. titleTxt, toggleKey, sectionContainer)
 end
 
 -- Data
 local crates = {"Hell", "Heaven", "Music", "Cyber", "Steampunk", "Graffiti", "Vampiric", "Construction", "Manga", "Samurai", "Royal", "Magma", "Ghost", "Abandoned", "Haunted", "Celestial", "Red Moon", "Vortex", "Cursed", "Devilous"}
 local potions = {"Yen", "Lucky", "Mutation", "Super Yen", "Rich", "Clover", "Angelic", "Bank", "Greed"}
 
--- Final Layout Construction
-makeToggle("Auto Collect Yen (Plot 1)", "AutoCollect")
-makeToggle("Auto Equip Best (25s)", "EquipBest")
+-- Final Build
+makeToggle("Auto Collect Yen", "AutoCollect")
+makeToggle("Auto Equip Best", "EquipBest")
 makeToggle("Anti-AFK System", "AntiAFK")
 
-makeToggle("Enable Auto Buy Crates", "Crates")
-makeSelectionArea("--- SELECT CRATES ---", crates, _G.selectedCrates)
+makeSection("Crates", "Crates", crates, _G.selectedCrates)
+makeSection("Potions", "Potions", potions, _G.selectedPotions)
 
-makeToggle("Enable Auto Use Potions", "Potions")
-makeSelectionArea("--- SELECT POTIONS ---", potions, _G.selectedPotions)
-
-print("✅ v6.2 Fixed & Ready.")
+print("✅ Motherfucking script loaded fvking successfully Hail AngeloFUllPower.")
