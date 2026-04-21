@@ -12,7 +12,7 @@ _G.selectedCrates = {}
 _G.selectedPotions = {}
 
 -- ==========================================
--- BACKEND LOOPS (Multi-Threaded)
+-- BACKEND LOOPS
 -- ==========================================
 
 -- AUTO COLLECT & EQUIP
@@ -44,7 +44,7 @@ task.spawn(function()
     end
 end)
 
--- AUTO BUY CRATES/POTIONS
+-- AUTO BUY LOOP
 task.spawn(function()
     while task.wait(1.5) do
         if _G.toggles.Crates then
@@ -61,7 +61,7 @@ task.spawn(function()
 end)
 
 -- ==========================================
--- UI REBUILD (Full Scroll Visibility)
+-- UI CONSTRUCTION (Clean Separation)
 -- ==========================================
 if playerGui:FindFirstChild("AngeloFinalHub") then playerGui.AngeloFinalHub:Destroy() end
 
@@ -69,54 +69,58 @@ local sg = Instance.new("ScreenGui", playerGui)
 sg.Name = "AngeloFinalHub"; sg.ResetOnSpawn = false
 
 local main = Instance.new("Frame", sg)
-main.Size = UDim2.new(0, 360, 0, 480); main.Position = UDim2.new(0.5, -180, 0.5, -240)
-main.BackgroundColor3 = Color3.fromRGB(15, 15, 22); main.Active = true; main.Draggable = true
+main.Size = UDim2.new(0, 380, 0, 520); main.Position = UDim2.new(0.5, -190, 0.5, -260)
+main.BackgroundColor3 = Color3.fromRGB(12, 12, 18); main.Active = true; main.Draggable = true
 Instance.new("UICorner", main)
 
 local header = Instance.new("Frame", main)
-header.Size = UDim2.new(1, 0, 0, 45); header.BackgroundColor3 = Color3.fromRGB(25, 25, 35)
+header.Size = UDim2.new(1, 0, 0, 45); header.BackgroundColor3 = Color3.fromRGB(22, 22, 30)
 Instance.new("UICorner", header)
 
 local title = Instance.new("TextLabel", header)
 title.Size = UDim2.new(1, 0, 1, 0); title.BackgroundTransparency = 1
-title.Text = "ANGELO HUB v6.0"; title.TextColor3 = Color3.fromRGB(0, 255, 150)
-title.Font = Enum.Font.GothamBold; title.TextSize = 14
+title.Text = "ANGELO HUB v6.1"; title.TextColor3 = Color3.fromRGB(0, 255, 150)
+title.Font = Enum.Font.GothamBold; title.TextSize = 15
 
 local scroll = Instance.new("ScrollingFrame", main)
 scroll.Size = UDim2.new(1, -10, 1, -55); scroll.Position = UDim2.new(0, 5, 0, 50)
 scroll.BackgroundTransparency = 1; scroll.ScrollBarThickness = 3
 scroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
-local list = Instance.new("UIListLayout", scroll); list.Padding = UDim.new(0, 8); list.HorizontalAlignment = Enum.HorizontalAlignment.Center
+local list = Instance.new("UIListLayout", scroll); list.Padding = UDim.new(0, 12); list.HorizontalAlignment = Enum.HorizontalAlignment.Center
 
 local function makeToggle(txt, key)
     local btn = Instance.new("TextButton", scroll)
-    btn.Size = UDim2.new(0.92, 0, 0, 40)
-    btn.BackgroundColor3 = Color3.fromRGB(35, 35, 45); btn.Text = txt; btn.TextColor3 = Color3.new(1,1,1); btn.Font = Enum.Font.Gotham
+    btn.Size = UDim2.new(0.94, 0, 0, 42)
+    btn.BackgroundColor3 = Color3.fromRGB(30, 30, 40); btn.Text = txt; btn.TextColor3 = Color3.new(1,1,1); btn.Font = Enum.Font.Gotham
     Instance.new("UICorner", btn)
     btn.MouseButton1Click:Connect(function()
         _G.toggles[key] = not _G.toggles[key]
-        btn.BackgroundColor3 = _G.toggles[key] and Color3.fromRGB(0, 180, 90) or Color3.fromRGB(35, 35, 45)
+        btn.BackgroundColor3 = _G.toggles[key] and Color3.fromRGB(0, 180, 90) or Color3.fromRGB(30, 30, 40)
     end)
 end
 
-local function makeSelectGrid(titleTxt, data, target)
-    local lab = Instance.new("TextLabel", scroll)
-    lab.Size = UDim2.new(0.9, 0, 0, 25); lab.Text = titleTxt; lab.TextColor3 = Color3.fromRGB(200,200,200); lab.BackgroundTransparency = 1; lab.Font = Enum.Font.GothamBold
+local function makeSelectionArea(labelTxt, items, target)
+    local titleLab = Instance.new("TextLabel", scroll)
+    titleLab.Size = UDim2.new(0.9, 0, 0, 20); titleLab.Text = labelTxt; titleLab.TextColor3 = Color3.fromRGB(0, 255, 150)
+    titleLab.BackgroundTransparency = 1; titleLab.Font = Enum.Font.GothamBold; titleLab.TextSize = 13
 
-    local grid = Instance.new("Frame", scroll)
-    grid.Size = UDim2.new(0.92, 0, 0, 140); grid.BackgroundColor3 = Color3.fromRGB(25, 25, 32)
-    Instance.new("UICorner", grid)
+    local container = Instance.new("Frame", scroll)
+    container.Size = UDim2.new(0.94, 0, 0, 160); container.BackgroundColor3 = Color3.fromRGB(20, 20, 28)
+    Instance.new("UICorner", container)
+
+    local internalScroll = Instance.new("ScrollingFrame", container)
+    internalScroll.Size = UDim2.new(1, -10, 1, -10); internalScroll.Position = UDim2.new(0, 5, 0, 5)
+    internalScroll.BackgroundTransparency = 1; internalScroll.ScrollBarThickness = 2; internalScroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
     
-    local gScroll = Instance.new("ScrollingFrame", grid)
-    gScroll.Size = UDim2.new(1, -10, 1, -10); gScroll.Position = UDim2.new(0, 5, 0, 5); gScroll.BackgroundTransparency = 1; gScroll.ScrollBarThickness = 2; gScroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
-    local gLay = Instance.new("UIGridLayout", gScroll); gLay.CellSize = UDim2.new(0, 95, 0, 28); gLay.Padding = UDim2.new(0, 5, 0, 5)
+    local grid = Instance.new("UIGridLayout", internalScroll)
+    grid.CellSize = UDim2.new(0, 105, 0, 32); grid.Padding = UDim2.new(0, 6, 0, 6); grid.HorizontalAlignment = Enum.HorizontalAlignment.Center
 
-    for _, name in pairs(data) do
-        local b = Instance.new("TextButton", gScroll)
-        b.Text = name; b.TextSize = 10; b.TextColor3 = Color3.new(1,1,1); b.BackgroundColor3 = Color3.fromRGB(45, 45, 55); Instance.new("UICorner", b)
+    for _, name in pairs(items) do
+        local b = Instance.new("TextButton", internalScroll)
+        b.Text = name; b.TextSize = 10; b.TextColor3 = Color3.new(1,1,1); b.BackgroundColor3 = Color3.fromRGB(40, 40, 50); Instance.new("UICorner", b)
         b.MouseButton1Click:Connect(function()
             target[name] = not target[name]
-            b.BackgroundColor3 = target[name] and Color3.fromRGB(0, 120, 255) or Color3.fromRGB(45, 45, 55)
+            b.BackgroundColor3 = target[name] and Color3.fromRGB(0, 120, 255) or Color3.fromRGB(40, 40, 50)
         end)
     end
 end
@@ -125,13 +129,15 @@ end
 local crates = {"Hell", "Heaven", "Music", "Cyber", "Steampunk", "Graffiti", "Vampiric", "Construction", "Manga", "Samurai", "Royal", "Magma", "Ghost", "Abandoned", "Haunted", "Celestial", "Red Moon", "Vortex", "Cursed", "Devilous"}
 local potions = {"Yen", "Lucky", "Mutation", "Super Yen", "Rich", "Clover", "Angelic", "Bank", "Greed"}
 
--- Build UI
-makeToggle("Auto Collect Yen (Plot 1 Only)", "AutoCollect")
-makeToggle("Auto Equip Best (25s Loop)", "EquipBest")
-makeToggle("Enable Auto Buy Crates", "Crates")
-makeSelectGrid("SELECT CRATES BELOW", crates, _G.selectedCrates)
-makeToggle("Enable Auto Use Potions", "Potions")
-makeSelectGrid("SELECT POTIONS BELOW", potions, _G.selectedPotions)
+-- Final Layout
+makeToggle("Auto Collect Yen (Plot 1)", "AutoCollect")
+makeToggle("Auto Equip Best (25s)", "EquipBest")
 makeToggle("Anti-AFK System", "AntiAFK")
 
-print("✅ Angelo Hub v6.0 Ready. All menus restored.")
+makeToggle("Enable Auto Buy Crates", "Crates")
+makeSelectionArea("--- SELECT CRATES ---", crates, _G.selectedCrates)
+
+makeToggle("Enable Auto Use Potions", "Potions")
+makeSelectionArea("--- SELECT POTIONS ---", potions, _G.selectedPotions)
+
+print("✅ Angelo Hub v6.1 Loaded - Crates and Potions Separated.")
