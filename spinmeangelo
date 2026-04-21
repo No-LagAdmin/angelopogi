@@ -17,7 +17,7 @@ local selectedCrates = {}
 local selectedPotions = {}
 
 -- ==========================================
--- FIXED CONFIGURATION SYSTEM
+-- CONFIGURATION SYSTEM
 -- ==========================================
 local function saveConfig()
     local data = {
@@ -30,7 +30,7 @@ local function saveConfig()
             writefile(filename, HttpService:JSONEncode(data))
         end
     end)
-    if success then print("✅ Config Saved!") else warn("❌ Save Failed: " .. tostring(result)) end
+    if success then print("✅ Config Saved!") else warn("❌ Save Failed") end
 end
 
 local function loadConfig()
@@ -38,24 +38,20 @@ local function loadConfig()
     if exists and isfile(filename) then
         local success, result = pcall(function()
             local decoded = HttpService:JSONDecode(readfile(filename))
-            -- Merge Toggles
             if decoded.Toggles then
                 for k, v in pairs(decoded.Toggles) do toggles[k] = v end
             end
-            -- Merge Crates
             if decoded.Crates then
                 for k, v in pairs(decoded.Crates) do selectedCrates[k] = v end
             end
-            -- Merge Potions
             if decoded.Potions then
                 for k, v in pairs(decoded.Potions) do selectedPotions[k] = v end
             end
         end)
-        if success then print("✅ Config Loaded!") else warn("❌ Load Failed: " .. tostring(result)) end
+        if success then print("✅ Config Loaded!") else warn("❌ Load Failed") end
     end
 end
 
--- Load existing config before building UI
 loadConfig()
 
 -- Cleanup
@@ -63,7 +59,7 @@ if playerGui:FindFirstChild("AngeloPogiHub") then
     playerGui:FindFirstChild("AngeloPogiHub"):Destroy()
 end
 
--- Main ScreenGui
+-- UI Setup
 local screenGui = Instance.new("ScreenGui")
 screenGui.Name = "AngeloPogiHub"
 screenGui.ResetOnSpawn = false
@@ -159,7 +155,7 @@ layout.Padding = UDim.new(0, 10)
 layout.HorizontalAlignment = Enum.HorizontalAlignment.Center
 layout.Parent = container
 
--- FUNCTION: CREATE SCROLLABLE DROPDOWN
+-- FUNCTION: CREATE DROPDOWN
 local function createDropdownMenu(titleText, list, selectionTable, toggleKey)
     local outerFrame = Instance.new("Frame")
     outerFrame.Size = UDim2.new(0.95, 0, 0, 50)
@@ -294,19 +290,15 @@ local function createSwitch(titleText, toggleKey, callback)
         callback(active)
     end)
     
-    -- Auto-run if enabled from load
     if toggles[toggleKey] then task.spawn(function() callback(true) end) end
 end
 
--- INITIALIZE DROPDOWNS
-createDropdownMenu("Select Crates", crateList, selectedCrates, "Crates")
-createDropdownMenu("Select Potions", potionList, selectedPotions, "Potions")
-
--- LOOPS FOR DROPDOWNS
+-- LOOPS FOR DROPDOWNS (FIXED STOP LOGIC)
 task.spawn(function()
     while true do
         if toggles.Crates then
             for item, _ in pairs(selectedCrates) do
+                if not toggles.Crates or not selectedCrates[item] then continue end
                 pcall(function() ReplicatedStorage.Events.Crate.purchase:FireServer(item, 1) end)
                 task.wait(0.3)
             end
@@ -319,6 +311,7 @@ task.spawn(function()
     while true do
         if toggles.Potions then
             for item, _ in pairs(selectedPotions) do
+                if not toggles.Potions or not selectedPotions[item] then continue end
                 pcall(function() ReplicatedStorage.Events.Potion.purchase:FireServer(item, 1) end)
                 task.wait(0.3)
             end
@@ -327,21 +320,23 @@ task.spawn(function()
     end
 end)
 
--- SWITCHES
+-- INITIALIZE ELEMENTS
+createDropdownMenu("Select Crates", crateList, selectedCrates, "Crates")
+createDropdownMenu("Select Potions", potionList, selectedPotions, "Potions")
+
 createSwitch("Auto Collect Money", "AutoCollect", function(state)
     while toggles.AutoCollect do
         for p = 1, 12 do
             local plot = workspace.Plots:FindFirstChild("Plot" .. p)
             if plot then
                 for s = 1, 12 do
+                    if not toggles.AutoCollect then break end
                     task.spawn(function()
                         local slot = plot.Slots:FindFirstChild(tostring(s))
                         if slot and slot:FindFirstChild("Button") then
                             local root = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
                             if root and firetouchinterest then
-                                firetouchinterest(slot.Button, root, 0)
-                                task.wait()
-                                firetouchinterest(slot.Button, root, 1)
+                                firetouchinterest(slot.Button, root, 0); task.wait(); firetouchinterest(slot.Button, root, 1)
                             end
                         end
                     end)
@@ -355,26 +350,21 @@ end)
 createSwitch("Anti-AFK", "AntiAFK", function(state)
     local VU = game:GetService("VirtualUser")
     while toggles.AntiAFK do
-        VU:CaptureController()
-        VU:ClickButton2(Vector2.new())
-        task.wait(30)
+        VU:CaptureController(); VU:ClickButton2(Vector2.new()); task.wait(30)
     end
 end)
 
 createSwitch("Auto Equip Best", "EquipBest", function(state)
     while toggles.EquipBest do
-        pcall(function() ReplicatedStorage.Events.Plot.equipBest:InvokeServer() end)
-        task.wait(30)
+        pcall(function() ReplicatedStorage.Events.Plot.equipBest:InvokeServer() end); task.wait(30)
     end
 end)
 
--- UI LOGIC & DRAG
+-- UI DRAG & TOGGLE
 local function toggleUI()
-    mainFrame.Visible = not mainFrame.Visible
-    minButton.Visible = not mainFrame.Visible
+    mainFrame.Visible = not mainFrame.Visible; minButton.Visible = not mainFrame.Visible
 end
-hideBtn.MouseButton1Click:Connect(toggleUI)
-minButton.MouseButton1Click:Connect(toggleUI)
+hideBtn.MouseButton1Click:Connect(toggleUI); minButton.MouseButton1Click:Connect(toggleUI)
 
 local function makeDraggable(obj)
     local dragging, dragStart, startPos
@@ -393,7 +383,6 @@ local function makeDraggable(obj)
         if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then dragging = false end
     end)
 end
-makeDraggable(mainFrame)
-makeDraggable(minButton)
+makeDraggable(mainFrame); makeDraggable(minButton)
 
-print("✅ Angelo Pogi Hub Loaded & Config System Ready!")
+print("✅ Welcome Motherfucker")
