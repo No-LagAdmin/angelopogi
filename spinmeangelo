@@ -17,7 +17,7 @@ local isMinimized = false
 -- STABLE BACKEND (Plot 1 Dedicated)
 -- ==========================================
 
--- AUTO COLLECT LOOP (Every 5 Seconds)
+-- AUTO COLLECT LOOP (Every 5 Seconds for Stability)
 task.spawn(function()
     while true do
         if toggles.AutoCollect then
@@ -25,20 +25,20 @@ task.spawn(function()
                 local char = player.Character
                 local root = char and char:FindFirstChild("HumanoidRootPart")
                 
-                -- Strict Path: Workspace.Plots.Plot1
+                -- Target: Workspace.Plots.Plot1
                 local plot1 = workspace:FindFirstChild("Plots") and workspace.Plots:FindFirstChild("Plot1")
                 
                 if plot1 and root then
                     local slots = plot1:FindFirstChild("Slots")
                     if slots then
-                        -- Strictly Slot 1 to Slot 12
+                        -- Loop Slots 1 to 12 strictly
                         for i = 1, 12 do
                             local slot = slots:FindFirstChild(tostring(i))
                             local btn = slot and slot:FindFirstChild("Button")
                             
                             if btn and btn:IsA("BasePart") then
                                 firetouchinterest(btn, root, 0)
-                                task.wait(0.05) -- Registration safety delay
+                                task.wait(0.05)
                                 firetouchinterest(btn, root, 1)
                             end
                         end
@@ -50,7 +50,7 @@ task.spawn(function()
     end
 end)
 
--- AUTO BUY/EQUIP LOOP
+-- AUTO BUY/USE LOOP
 task.spawn(function()
     while true do
         if toggles.Crates then
@@ -70,17 +70,17 @@ task.spawn(function()
 end)
 
 -- ==========================================
--- UI DESIGN (BIGGER & MINIMIZABLE)
+-- UI DESIGN (SPECIAL EDITION INTERFACE)
 -- ==========================================
-if playerGui:FindFirstChild("AngeloV4Plot1") then playerGui.AngeloV4Plot1:Destroy() end
+if playerGui:FindFirstChild("AngeloFullPower") then playerGui.AngeloFullPower:Destroy() end
 
 local sg = Instance.new("ScreenGui", playerGui)
-sg.Name = "AngeloV4Plot1"
+sg.Name = "AngeloFullPower"
 sg.ResetOnSpawn = false
 
 local main = Instance.new("Frame", sg)
-main.Size = UDim2.new(0, 360, 0, 480)
-main.Position = UDim2.new(0.5, -180, 0.5, -240)
+main.Size = UDim2.new(0, 360, 0, 500)
+main.Position = UDim2.new(0.5, -180, 0.5, -250)
 main.BackgroundColor3 = Color3.fromRGB(15, 15, 20)
 main.BorderSizePixel = 0
 main.ClipsDescendants = true
@@ -92,38 +92,37 @@ Instance.new("UICorner", header)
 
 local title = Instance.new("TextLabel", header)
 title.Size = UDim2.new(1, -60, 1, 0); title.Position = UDim2.new(0, 15, 0, 0)
-title.Text = "ANGELO HUB V4: PLOT 1"; title.TextColor3 = Color3.fromRGB(0, 255, 150)
-title.Font = Enum.Font.GothamBold; title.TextSize = 16; title.BackgroundTransparency = 1; title.TextXAlignment = 0
+title.Text = "ANGELO FULL POWER SPECIAL EDITION"; title.TextColor3 = Color3.fromRGB(0, 255, 150)
+title.Font = Enum.Font.GothamBold; title.TextSize = 14; title.BackgroundTransparency = 1; title.TextXAlignment = 0
 
 local minBtn = Instance.new("TextButton", header)
 minBtn.Size = UDim2.new(0, 40, 0, 40); minBtn.Position = UDim2.new(1, -45, 0, 5)
 minBtn.Text = "-"; minBtn.TextColor3 = Color3.new(1,1,1); minBtn.BackgroundColor3 = Color3.fromRGB(40, 40, 50)
 minBtn.Font = Enum.Font.GothamBold; Instance.new("UICorner", minBtn)
 
-local content = Instance.new("ScrollingFrame", main)
-content.Size = UDim2.new(1, -20, 1, -60); content.Position = UDim2.new(0, 10, 0, 60)
-content.BackgroundTransparency = 1; content.ScrollBarThickness = 2; content.AutomaticCanvasSize = Enum.AutomaticSize.Y
-Instance.new("UIListLayout", content).Padding = UDim.new(0, 8)
+local scroll = Instance.new("ScrollingFrame", main)
+scroll.Size = UDim2.new(1, -20, 1, -60); scroll.Position = UDim2.new(0, 10, 0, 60)
+scroll.BackgroundTransparency = 1; scroll.ScrollBarThickness = 2; scroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
+Instance.new("UIListLayout", scroll).Padding = UDim.new(0, 8)
 
--- Components
-local function createToggle(txt, key)
-    local btn = Instance.new("TextButton", content)
+local function makeToggle(txt, key)
+    local btn = Instance.new("TextButton", scroll)
     btn.Size = UDim2.new(0.96, 0, 0, 42)
-    btn.BackgroundColor3 = toggles[key] and Color3.fromRGB(0, 150, 80) or Color3.fromRGB(30, 30, 40)
+    btn.BackgroundColor3 = toggles[key] and Color3.fromRGB(0, 150, 80) or Color3.fromRGB(35, 35, 45)
     btn.Text = txt; btn.TextColor3 = Color3.new(1,1,1); btn.Font = Enum.Font.Gotham; btn.TextSize = 13
     Instance.new("UICorner", btn)
     btn.MouseButton1Click:Connect(function()
         toggles[key] = not toggles[key]
-        btn.BackgroundColor3 = toggles[key] and Color3.fromRGB(0, 150, 80) or Color3.fromRGB(30, 30, 40)
+        btn.BackgroundColor3 = toggles[key] and Color3.fromRGB(0, 150, 80) or Color3.fromRGB(35, 35, 45)
     end)
 end
 
-local function createGrid(txt, list, tab)
-    local lbl = Instance.new("TextLabel", content)
+local function makeGrid(txt, list, tab)
+    local lbl = Instance.new("TextLabel", scroll)
     lbl.Size = UDim2.new(1, 0, 0, 20); lbl.Text = "  " .. txt; lbl.TextColor3 = Color3.new(0.6,0.6,0.6)
     lbl.Font = Enum.Font.Gotham; lbl.TextXAlignment = 0; lbl.BackgroundTransparency = 1
 
-    local gFrame = Instance.new("Frame", content)
+    local gFrame = Instance.new("Frame", scroll)
     gFrame.Size = UDim2.new(0.96, 0, 0, 110); gFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 25)
     Instance.new("UICorner", gFrame)
 
@@ -135,25 +134,25 @@ local function createGrid(txt, list, tab)
     for _, name in pairs(list) do
         local b = Instance.new("TextButton", gScroll)
         b.Text = name; b.Font = Enum.Font.Gotham; b.TextSize = 10; b.TextColor3 = Color3.new(1,1,1)
-        b.BackgroundColor3 = tab[name] and Color3.fromRGB(0, 120, 255) or Color3.fromRGB(40, 40, 50)
+        b.BackgroundColor3 = tab[name] and Color3.fromRGB(0, 120, 255) or Color3.fromRGB(45, 45, 55)
         Instance.new("UICorner", b)
         b.MouseButton1Click:Connect(function()
             tab[name] = not tab[name] or nil
-            b.BackgroundColor3 = tab[name] and Color3.fromRGB(0, 120, 255) or Color3.fromRGB(40, 40, 50)
+            b.BackgroundColor3 = tab[name] and Color3.fromRGB(0, 120, 255) or Color3.fromRGB(45, 45, 55)
         end)
     end
 end
 
--- Setup
+-- UI Sections
 local crates = {"Heaven", "Music", "Cyber", "Steampunk", "Graffiti", "Vampiric", "Manga", "Samurai", "Royal", "Magma", "Hell", "Celestial", "Vortex", "Cursed"}
 local potions = {"Yen", "Lucky", "Mutation", "Super Yen", "Rich", "Clover", "Angelic", "Bank", "Greed"}
 
-createToggle("Auto Collect (Plot 1 Only)", "AutoCollect")
-createToggle("Anti-AFK System", "AntiAFK")
-createToggle("Auto Buy Crates", "Crates")
-createGrid("Select Crates (Multiple)", crates, selectedCrates)
-createToggle("Auto Use Potions", "Potions")
-createGrid("Select Potions (Multiple)", potions, selectedPotions)
+makeToggle("Auto Collect (Plot 1 Only)", "AutoCollect")
+makeToggle("Anti-AFK System", "AntiAFK")
+makeToggle("Enable Auto Buy Crates", "Crates")
+makeGrid("Select Crates", crates, selectedCrates)
+makeToggle("Enable Auto Use Potions", "Potions")
+makeGrid("Select Potions", potions, selectedPotions)
 
 -- Dragging Logic
 local dragging, dragStart, startPos
@@ -164,18 +163,17 @@ UserInputService.InputEnded:Connect(function(i) if i.UserInputType == Enum.UserI
 -- Minimize Logic
 minBtn.MouseButton1Click:Connect(function()
     isMinimized = not isMinimized
-    main:TweenSize(isMinimized and UDim2.new(0, 360, 0, 50) or UDim2.new(0, 360, 0, 480), "Out", "Quart", 0.3, true)
+    main:TweenSize(isMinimized and UDim2.new(0, 360, 0, 50) or UDim2.new(0, 360, 0, 500), "Out", "Quart", 0.3, true)
     minBtn.Text = isMinimized and "+" or "-"
 end)
 
 -- Anti-AFK
 player.Idled:Connect(function()
     if toggles.AntiAFK then
-        local vu = game:GetService("VirtualUser")
-        vu:Button2Down(Vector2.new(0,0), workspace.CurrentCamera.CFrame)
+        game:GetService("VirtualUser"):Button2Down(Vector2.new(0,0), workspace.CurrentCamera.CFrame)
         task.wait(1)
-        vu:Button2Up(Vector2.new(0,0), workspace.CurrentCamera.CFrame)
+        game:GetService("VirtualUser"):Button2Up(Vector2.new(0,0), workspace.CurrentCamera.CFrame)
     end
 end)
 
-print("✅ Angelo Hub V4: Plot 1 Dedicated Loader Complete")
+print("✅ Angelo Full Power Special Edition Loaded.")
