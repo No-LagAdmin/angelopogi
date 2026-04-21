@@ -1,69 +1,46 @@
 -- Services
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local TweenService = game:GetService("TweenService")
 local UserInputService = game:GetService("UserInputService")
-local HttpService = game:GetService("HttpService")
 
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
 
--- Variables
+-- Logic Variables
 local toggles = { AutoCollect = false, AntiAFK = false, Crates = false, Potions = false }
 local selectedCrates = {}
 local selectedPotions = {}
-local cachedButtons = {}
 local isMinimized = false
 
 -- ==========================================
--- STABLE BACKEND (Slot Indexing)
+-- THE FIX: PROXIMITY-BASED COLLECTION
 -- ==========================================
-
-local function updateSlotCache()
-    cachedButtons = {}
-    pcall(function()
-        -- Adjust "Plot1" if your plot name changes, or use a dynamic finder
-        local plots = workspace:FindFirstChild("Plots")
-        if plots then
-            for _, plot in pairs(plots:GetChildren()) do
-                local owner = plot:FindFirstChild("Owner")
-                if owner and (owner.Value == player.Name or tostring(owner.Value) == tostring(player.UserId)) then
-                    local slots = plot:FindFirstChild("Slots")
-                    if slots then
-                        for i = 1, 12 do
-                            local slot = slots:FindFirstChild(tostring(i))
-                            local btn = slot and slot:FindFirstChild("Button")
-                            if btn then table.insert(cachedButtons, btn) end
-                        end
-                    end
-                end
-            end
-        end
-    end)
-end
-
--- AUTO COLLECT LOOP (Repeat every 2 seconds)
 task.spawn(function()
     while true do
         if toggles.AutoCollect then
-            local root = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
-            if root then
-                if #cachedButtons == 0 then updateSlotCache() end
-                for _, btn in pairs(cachedButtons) do
-                    if not toggles.AutoCollect then break end
-                    pcall(function()
-                        firetouchinterest(btn, root, 0)
-                        task.wait() -- Micro-wait to prevent crash
-                        firetouchinterest(btn, root, 1)
-                    end)
+            pcall(function()
+                local char = player.Character
+                local root = char and char:FindFirstChild("HumanoidRootPart")
+                
+                if root then
+                    -- Scans for buttons NEAR YOU (Prevents the 'String' comparison crash)
+                    for _, v in pairs(workspace:GetDescendants()) do
+                        if v.Name == "Button" or v.Name == "Collect" then
+                            if v:IsA("BasePart") and (v.Position - root.Position).Magnitude < 50 then
+                                firetouchinterest(v, root, 0)
+                                task.wait()
+                                firetouchinterest(v, root, 1)
+                            end
+                        end
+                    end
                 end
-            end
+            end)
         end
-        task.wait(2)
+        task.wait(1.5) -- Fires every 1.5 seconds for maximum speed without lag
     end
 end)
 
--- AUTO PURCHASE LOOP
+-- AUTO ACTIONS LOOP
 task.spawn(function()
     while true do
         if toggles.Crates then
@@ -78,39 +55,39 @@ task.spawn(function()
                 task.wait(0.5)
             end
         end
-        task.wait(2)
+        task.wait(1)
     end
 end)
 
 -- ==========================================
--- UI DESIGN (BIGGER & MINIMIZABLE)
+-- UI DESIGN (CLEAN & ACCESSIBLE)
 -- ==========================================
-if playerGui:FindFirstChild("AngeloHubV4Pro") then playerGui.AngeloHubV4Pro:Destroy() end
+if playerGui:FindFirstChild("AngeloFinal") then playerGui.AngeloFinal:Destroy() end
 
 local sg = Instance.new("ScreenGui", playerGui)
-sg.Name = "AngeloHubV4Pro"
+sg.Name = "AngeloFinal"
 sg.ResetOnSpawn = false
 
 local main = Instance.new("Frame", sg)
-main.Size = UDim2.new(0, 360, 0, 480) -- Bigger size
-main.Position = UDim2.new(0.5, -180, 0.5, -240)
+main.Size = UDim2.new(0, 340, 0, 480)
+main.Position = UDim2.new(0.5, -170, 0.5, -240)
 main.BackgroundColor3 = Color3.fromRGB(15, 15, 20)
 main.BorderSizePixel = 0
 main.ClipsDescendants = true
 Instance.new("UICorner", main)
 
 local header = Instance.new("Frame", main)
-header.Size = UDim2.new(1, 0, 0, 50); header.BackgroundColor3 = Color3.fromRGB(25, 25, 35)
+header.Size = UDim2.new(1, 0, 0, 45); header.BackgroundColor3 = Color3.fromRGB(30, 30, 40)
 Instance.new("UICorner", header)
 
 local title = Instance.new("TextLabel", header)
 title.Size = UDim2.new(1, -60, 1, 0); title.Position = UDim2.new(0, 15, 0, 0)
-title.Text = "ANGELO POGI HUB V4 PRO"; title.TextColor3 = Color3.fromRGB(0, 255, 150)
-title.Font = Enum.Font.GothamBold; title.TextSize = 16; title.BackgroundTransparency = 1; title.TextXAlignment = 0
+title.Text = "ANGELO POGI HUB V4"; title.TextColor3 = Color3.fromRGB(0, 255, 150)
+title.Font = Enum.Font.GothamBold; title.TextSize = 15; title.BackgroundTransparency = 1; title.TextXAlignment = 0
 
 local minBtn = Instance.new("TextButton", header)
-minBtn.Size = UDim2.new(0, 40, 0, 40); minBtn.Position = UDim2.new(1, -45, 0, 5)
-minBtn.Text = "-"; minBtn.TextColor3 = Color3.new(1,1,1); minBtn.BackgroundColor3 = Color3.fromRGB(40, 40, 50)
+minBtn.Size = UDim2.new(0, 35, 0, 35); minBtn.Position = UDim2.new(1, -40, 0.5, -17)
+minBtn.Text = "-"; minBtn.TextColor3 = Color3.new(1,1,1); minBtn.BackgroundColor3 = Color3.fromRGB(45, 45, 55)
 minBtn.Font = Enum.Font.GothamBold; Instance.new("UICorner", minBtn)
 
 local content = Instance.new("ScrollingFrame", main)
@@ -122,13 +99,12 @@ Instance.new("UIListLayout", content).Padding = UDim.new(0, 8)
 local function createToggle(txt, key)
     local btn = Instance.new("TextButton", content)
     btn.Size = UDim2.new(0.96, 0, 0, 40)
-    btn.BackgroundColor3 = toggles[key] and Color3.fromRGB(0, 150, 80) or Color3.fromRGB(30, 30, 40)
-    btn.Text = txt; btn.TextColor3 = Color3.new(1,1,1); btn.Font = Enum.Font.Gotham; btn.TextSize = 13
+    btn.BackgroundColor3 = toggles[key] and Color3.fromRGB(0, 150, 80) or Color3.fromRGB(35, 35, 45)
+    btn.Text = txt; btn.TextColor3 = Color3.new(1,1,1); btn.Font = Enum.Font.Gotham
     Instance.new("UICorner", btn)
     btn.MouseButton1Click:Connect(function()
         toggles[key] = not toggles[key]
-        btn.BackgroundColor3 = toggles[key] and Color3.fromRGB(0, 150, 80) or Color3.fromRGB(30, 30, 40)
-        if key == "AutoCollect" and toggles[key] then updateSlotCache() end
+        btn.BackgroundColor3 = toggles[key] and Color3.fromRGB(0, 150, 80) or Color3.fromRGB(35, 35, 45)
     end)
 end
 
@@ -138,13 +114,13 @@ local function createGrid(txt, list, tab)
     lbl.Font = Enum.Font.Gotham; lbl.TextXAlignment = 0; lbl.BackgroundTransparency = 1
 
     local gFrame = Instance.new("Frame", content)
-    gFrame.Size = UDim2.new(0.96, 0, 0, 110); gFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 25)
+    gFrame.Size = UDim2.new(0.96, 0, 0, 100); gFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 25)
     Instance.new("UICorner", gFrame)
 
     local gScroll = Instance.new("ScrollingFrame", gFrame)
     gScroll.Size = UDim2.new(1, -10, 1, -10); gScroll.Position = UDim2.new(0, 5, 0, 5)
-    gScroll.BackgroundTransparency = 1; gScroll.CanvasSize = UDim2.new(0,0,2.5,0); gScroll.ScrollBarThickness = 0
-    local grid = Instance.new("UIGridLayout", gScroll); grid.CellSize = UDim2.new(0, 100, 0, 28)
+    gScroll.BackgroundTransparency = 1; gScroll.CanvasSize = UDim2.new(0,0,3,0); gScroll.ScrollBarThickness = 0
+    local grid = Instance.new("UIGridLayout", gScroll); grid.CellSize = UDim2.new(0, 95, 0, 25)
 
     for _, name in pairs(list) do
         local b = Instance.new("TextButton", gScroll)
@@ -158,43 +134,36 @@ local function createGrid(txt, list, tab)
     end
 end
 
--- Setup Sections
+-- UI Setup
 local crates = {"Heaven", "Music", "Cyber", "Steampunk", "Graffiti", "Vampiric", "Manga", "Samurai", "Royal", "Magma", "Hell", "Celestial", "Vortex", "Cursed"}
 local potions = {"Yen", "Lucky", "Mutation", "Super Yen", "Rich", "Clover", "Angelic", "Bank", "Greed"}
 
-createToggle("Auto Collect (Slots 1-12)", "AutoCollect")
+createToggle("Auto Collect (Proximity)", "AutoCollect")
 createToggle("Anti-AFK", "AntiAFK")
-createToggle("Auto Buy Crates", "Crates")
+createToggle("Enable Auto Crates", "Crates")
 createGrid("Select Crates", crates, selectedCrates)
-createToggle("Auto Use Potions", "Potions")
+createToggle("Enable Auto Potions", "Potions")
 createGrid("Select Potions", potions, selectedPotions)
 
--- Dragging Logic
+-- Drag/Min Logic
 local dragging, dragStart, startPos
 header.InputBegan:Connect(function(i) if i.UserInputType == Enum.UserInputType.MouseButton1 then dragging = true; dragStart = i.Position; startPos = main.Position end end)
 UserInputService.InputChanged:Connect(function(i) if dragging and i.UserInputType == Enum.UserInputType.MouseMovement then local delta = i.Position - dragStart; main.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y) end end)
 UserInputService.InputEnded:Connect(function(i) if i.UserInputType == Enum.UserInputType.MouseButton1 then dragging = false end end)
 
--- Minimize Logic
 minBtn.MouseButton1Click:Connect(function()
     isMinimized = not isMinimized
-    if isMinimized then
-        main:TweenSize(UDim2.new(0, 360, 0, 50), "Out", "Quart", 0.3, true)
-        minBtn.Text = "+"
-    else
-        main:TweenSize(UDim2.new(0, 360, 0, 480), "Out", "Quart", 0.3, true)
-        minBtn.Text = "-"
-    end
+    main:TweenSize(isMinimized and UDim2.new(0, 340, 0, 45) or UDim2.new(0, 340, 0, 480), "Out", "Quart", 0.3, true)
+    minBtn.Text = isMinimized and "+" or "-"
 end)
 
 -- Anti-AFK
 player.Idled:Connect(function()
     if toggles.AntiAFK then
-        local vu = game:GetService("VirtualUser")
-        vu:Button2Down(Vector2.new(0,0), workspace.CurrentCamera.CFrame)
+        game:GetService("VirtualUser"):Button2Down(Vector2.new(0,0), workspace.CurrentCamera.CFrame)
         task.wait(1)
-        vu:Button2Up(Vector2.new(0,0), workspace.CurrentCamera.CFrame)
+        game:GetService("VirtualUser"):Button2Up(Vector2.new(0,0), workspace.CurrentCamera.CFrame)
     end
 end)
 
-print("✅ Angelo Hub V4 PRO Loaded - Collect Logic Updated")
+print("✅ Angelo Hub V4 Final Loaded.")
