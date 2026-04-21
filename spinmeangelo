@@ -38,53 +38,56 @@ end
 loadConfig()
 
 -- ==========================================
--- AUTOMATION LOOPS
+-- AFK-OPTIMIZED LOOPS
 -- ==========================================
 
--- AUTO POTION (NO LIMITS)
+-- AUTO POTION (Lower frequency to prevent Network Lag)
 task.spawn(function()
     while true do
         if toggles.Potions then
             for item, _ in pairs(selectedPotions) do
-                if not toggles.Potions or not selectedPotions[item] then continue end
+                if not toggles.Potions then break end
                 pcall(function() 
                     ReplicatedStorage.Events.Potion.purchase:FireServer(item, 1) 
                 end)
-                task.wait(0.5) 
+                task.wait(1.5) -- Increased delay for AFK stability
             end
         end
-        task.wait(0.5)
+        task.wait(2)
     end
 end)
 
--- AUTO COLLECT (STABLE)
+-- AUTO COLLECT (Safety Wrapped)
 task.spawn(function()
     while true do
         if toggles.AutoCollect then
-            local character = player.Character
-            local root = character and character:FindFirstChild("HumanoidRootPart")
+            local char = player.Character
+            local root = char and char:FindFirstChild("HumanoidRootPart")
+            
             if root then
-                local plots = workspace:FindFirstChild("Plots")
-                if plots then
-                    for p = 1, 12 do
-                        if not toggles.AutoCollect then break end
-                        local plot = plots:FindFirstChild("Plot" .. p)
-                        if plot and plot:FindFirstChild("Slots") then
-                            for s = 1, 12 do
-                                local slot = plot.Slots:FindFirstChild(tostring(s))
-                                local button = slot and slot:FindFirstChild("Button")
-                                if button and firetouchinterest then
-                                    firetouchinterest(button, root, 0)
-                                    task.wait()
-                                    firetouchinterest(button, root, 1)
+                pcall(function()
+                    local plots = workspace:FindFirstChild("Plots")
+                    if plots then
+                        for p = 1, 12 do
+                            if not toggles.AutoCollect then break end
+                            local plot = plots:FindFirstChild("Plot" .. p)
+                            local slots = plot and plot:FindFirstChild("Slots")
+                            if slots then
+                                for _, slot in pairs(slots:GetChildren()) do
+                                    local btn = slot:FindFirstChild("Button")
+                                    if btn and firetouchinterest then
+                                        firetouchinterest(btn, root, 0)
+                                        task.wait(0.05) -- Safety yield
+                                        firetouchinterest(btn, root, 1)
+                                    end
                                 end
                             end
                         end
                     end
-                end
+                end)
             end
         end
-        task.wait(1)
+        task.wait(3) -- Slowed down to prevent memory crashes during long AFK
     end
 end)
 
@@ -93,114 +96,96 @@ task.spawn(function()
     while true do
         if toggles.Crates then
             for item, _ in pairs(selectedCrates) do
-                if not toggles.Crates or not selectedCrates[item] then continue end
-                pcall(function() ReplicatedStorage.Events.Crate.purchase:FireServer(item, 1) end)
-                task.wait(0.4)
+                if not toggles.Crates then break end
+                pcall(function() 
+                    ReplicatedStorage.Events.Crate.purchase:FireServer(item, 1) 
+                end)
+                task.wait(1)
             end
         end
-        task.wait(0.5)
+        task.wait(2)
     end
 end)
 
 -- ==========================================
--- OLD UI DESIGN (RESTORED)
+-- CLASSIC UI
 -- ==========================================
-if playerGui:FindFirstChild("AngeloPogiHub") then playerGui:FindFirstChild("AngeloPogiHub"):Destroy() end
+if playerGui:FindFirstChild("AngeloPogiHub") then playerGui.AngeloPogiHub:Destroy() end
 
 local screenGui = Instance.new("ScreenGui", playerGui)
 screenGui.Name = "AngeloPogiHub"
 screenGui.ResetOnSpawn = false
 
-local mainFrame = Instance.new("Frame", screenGui)
-mainFrame.Size = UDim2.new(0, 340, 0, 400)
-mainFrame.Position = UDim2.new(0.5, -170, 0.5, -200)
-mainFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 25)
-mainFrame.BorderSizePixel = 0
-mainFrame.Active = true
-Instance.new("UICorner", mainFrame).CornerRadius = UDim.new(0, 12)
+local main = Instance.new("Frame", screenGui)
+main.Size = UDim2.new(0, 340, 0, 400)
+main.Position = UDim2.new(0.5, -170, 0.5, -200)
+main.BackgroundColor3 = Color3.fromRGB(20, 20, 25)
+main.BorderSizePixel = 0
+Instance.new("UICorner", main)
 
--- Header
-local header = Instance.new("Frame", mainFrame)
-header.Size = UDim2.new(1, 0, 0, 55)
-header.BackgroundColor3 = Color3.fromRGB(35, 35, 45)
-Instance.new("UICorner", header).CornerRadius = UDim.new(0, 12)
+local header = Instance.new("Frame", main)
+header.Size = UDim2.new(1, 0, 0, 50)
+header.BackgroundColor3 = Color3.fromRGB(30, 30, 40)
+Instance.new("UICorner", header)
 
 local title = Instance.new("TextLabel", header)
-title.Size = UDim2.new(1, -20, 1, 0)
-title.Position = UDim2.new(0, 15, 0, 0)
-title.Text = "ANGELO POGI HUB"
-title.TextColor3 = Color3.new(1, 1, 1)
-title.Font = Enum.Font.GothamBold
-title.TextSize = 16
-title.BackgroundTransparency = 1
-title.TextXAlignment = 0
+title.Size = UDim2.new(1, 0, 1, 0); title.Text = "  ANGELO POGI HUB"; title.TextColor3 = Color3.new(1,1,1); title.Font = Enum.Font.GothamBold; title.BackgroundTransparency = 1; title.TextXAlignment = 0
 
--- Scrolling Container
-local container = Instance.new("ScrollingFrame", mainFrame)
-container.Size = UDim2.new(1, -10, 1, -65)
-container.Position = UDim2.new(0, 5, 0, 60)
-container.BackgroundTransparency = 1
-container.ScrollBarThickness = 2
-container.AutomaticCanvasSize = Enum.AutomaticSize.Y
-Instance.new("UIListLayout", container).Padding = UDim.new(0, 10)
+local container = Instance.new("ScrollingFrame", main)
+container.Size = UDim2.new(1, -10, 1, -60)
+container.Position = UDim2.new(0, 5, 0, 55)
+container.BackgroundTransparency = 1; container.AutomaticCanvasSize = 2
+Instance.new("UIListLayout", container).Padding = UDim.new(0, 8)
 
--- Reusable Components
-local function createSwitch(titleText, toggleKey, callback)
+-- Components
+local function createSwitch(text, key, callback)
     local row = Instance.new("Frame", container)
-    row.Size = UDim2.new(0.95, 0, 0, 50)
-    row.BackgroundColor3 = Color3.fromRGB(30, 30, 35)
+    row.Size = UDim2.new(0.95, 0, 0, 45); row.BackgroundColor3 = Color3.fromRGB(28, 28, 35)
     Instance.new("UICorner", row)
     
-    local label = Instance.new("TextLabel", row)
-    label.Size = UDim2.new(0.6, 0, 1, 0)
-    label.Position = UDim2.new(0, 12, 0, 0)
-    label.Text = titleText; label.TextColor3 = Color3.fromRGB(200, 200, 200); label.Font = Enum.Font.Gotham; label.TextSize = 14; label.BackgroundTransparency = 1; label.TextXAlignment = 0
+    local lbl = Instance.new("TextLabel", row)
+    lbl.Size = UDim2.new(0.7, 0, 1, 0); lbl.Position = UDim2.new(0, 12, 0, 0); lbl.Text = text; lbl.TextColor3 = Color3.new(0.8,0.8,0.8); lbl.BackgroundTransparency = 1; lbl.TextXAlignment = 0
     
-    local track = Instance.new("TextButton", row)
-    track.Size = UDim2.new(0, 44, 0, 22); track.Position = UDim2.new(1, -55, 0.5, -11)
-    track.BackgroundColor3 = toggles[toggleKey] and Color3.fromRGB(0, 255, 150) or Color3.fromRGB(60, 60, 65); track.Text = ""
-    Instance.new("UICorner", track).CornerRadius = UDim.new(1, 0)
+    local btn = Instance.new("TextButton", row)
+    btn.Size = UDim2.new(0, 40, 0, 20); btn.Position = UDim2.new(1, -50, 0.5, -10)
+    btn.BackgroundColor3 = toggles[key] and Color3.fromRGB(0, 200, 100) or Color3.fromRGB(60, 60, 70); btn.Text = ""
+    Instance.new("UICorner", btn).CornerRadius = UDim.new(1, 0)
     
-    track.MouseButton1Click:Connect(function()
-        toggles[toggleKey] = not toggles[toggleKey]
-        track.BackgroundColor3 = toggles[toggleKey] and Color3.fromRGB(0, 255, 150) or Color3.fromRGB(60, 60, 65)
+    btn.MouseButton1Click:Connect(function()
+        toggles[key] = not toggles[key]
+        btn.BackgroundColor3 = toggles[key] and Color3.fromRGB(0, 200, 100) or Color3.fromRGB(60, 60, 70)
         saveConfig()
-        if callback then task.spawn(function() callback(toggles[toggleKey]) end) end
+        if callback then task.spawn(function() callback(toggles[key]) end) end
     end)
-    if toggles[toggleKey] and callback then task.spawn(function() callback(true) end) end
 end
 
-local function createDropdown(titleText, list, selectionTable, toggleKey)
-    local outerFrame = Instance.new("Frame", container)
-    outerFrame.Size = UDim2.new(0.95, 0, 0, 50); outerFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 35); outerFrame.ClipsDescendants = true
-    Instance.new("UICorner", outerFrame)
+local function createDropdown(text, list, selection, key)
+    local frame = Instance.new("Frame", container)
+    frame.Size = UDim2.new(0.95, 0, 0, 45); frame.BackgroundColor3 = Color3.fromRGB(28, 28, 35); frame.ClipsDescendants = true; Instance.new("UICorner", frame)
+    local btn = Instance.new("TextButton", frame)
+    btn.Size = UDim2.new(1, 0, 0, 45); btn.Text = "  " .. text; btn.TextColor3 = Color3.new(1,1,1); btn.BackgroundTransparency = 1; btn.TextXAlignment = 0
+    
+    local inner = Instance.new("ScrollingFrame", frame)
+    inner.Size = UDim2.new(1, -20, 0, 120); inner.Position = UDim2.new(0, 10, 0, 50); inner.BackgroundTransparency = 1; inner.AutomaticCanvasSize = 2
+    Instance.new("UIGridLayout", inner).CellSize = UDim2.new(0, 90, 0, 25)
 
-    local topBar = Instance.new("TextButton", outerFrame)
-    topBar.Size = UDim2.new(1, 0, 0, 50); topBar.Text = "  " .. titleText; topBar.TextColor3 = Color3.new(1,1,1); topBar.Font = Enum.Font.GothamBold; topBar.BackgroundTransparency = 1; topBar.TextXAlignment = 0
-
-    local listScroll = Instance.new("ScrollingFrame", outerFrame)
-    listScroll.Size = UDim2.new(1, -20, 0, 130); listScroll.Position = UDim2.new(0, 10, 0, 55); listScroll.BackgroundTransparency = 1; listScroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
-    local grid = Instance.new("UIGridLayout", listScroll); grid.CellSize = UDim2.new(0, 95, 0, 30)
-
-    for _, itemName in pairs(list) do
-        local btn = Instance.new("TextButton", listScroll)
-        btn.Text = itemName; btn.BackgroundColor3 = selectionTable[itemName] and Color3.fromRGB(0, 120, 255) or Color3.fromRGB(45, 45, 50); btn.TextColor3 = Color3.new(1,1,1); btn.Font = Enum.Font.Gotham; btn.TextSize = 10
-        Instance.new("UICorner", btn)
-        btn.MouseButton1Click:Connect(function()
-            selectionTable[itemName] = not selectionTable[itemName] or nil
-            btn.BackgroundColor3 = selectionTable[itemName] and Color3.fromRGB(0, 120, 255) or Color3.fromRGB(45, 45, 50)
+    for _, name in pairs(list) do
+        local opt = Instance.new("TextButton", inner)
+        opt.Text = name; opt.BackgroundColor3 = selection[name] and Color3.fromRGB(0, 120, 255) or Color3.fromRGB(40, 40, 50); opt.TextColor3 = Color3.new(1,1,1); Instance.new("UICorner", opt)
+        opt.MouseButton1Click:Connect(function()
+            selection[name] = not selection[name] or nil
+            opt.BackgroundColor3 = selection[name] and Color3.fromRGB(0, 120, 255) or Color3.fromRGB(40, 40, 50)
             saveConfig()
         end)
     end
-
-    topBar.MouseButton1Click:Connect(function()
-        local expanded = outerFrame.Size.Y.Offset == 50
-        TweenService:Create(outerFrame, TweenInfo.new(0.3), {Size = expanded and UDim2.new(0.95, 0, 0, 200) or UDim2.new(0.95, 0, 0, 50)}):Play()
+    btn.MouseButton1Click:Connect(function()
+        local expanded = frame.Size.Y.Offset == 45
+        TweenService:Create(frame, TweenInfo.new(0.3), {Size = expanded and UDim2.new(0.95, 0, 0, 180) or UDim2.new(0.95, 0, 0, 45)}):Play()
     end)
-    createSwitch("Enable " .. titleText, toggleKey)
+    createSwitch("Enable " .. text, key)
 end
 
--- Init
+-- Initialization
 local crates = {"Heaven", "Music", "Cyber", "Steampunk", "Graffiti", "Vampiric", "Construction", "Manga", "Samurai", "Royal", "Magma", "Porcelain", "Hell", "Ghost", "Abandoned", "Haunted", "Celestial", "Red Moon", "Vortex", "Cursed", "Devilous"}
 local potions = {"Yen", "Lucky", "Mutation", "Super Yen", "Super Lucky", "Rich", "Clover", "Angelic", "Bank", "Evil", "Fairy", "Greed"}
 
@@ -215,13 +200,10 @@ createSwitch("Auto Equip Best", "EquipBest", function(s)
     while toggles.EquipBest do pcall(function() ReplicatedStorage.Events.Plot.equipBest:InvokeServer() end); task.wait(30) end
 end)
 
--- Dragging
-local function makeDraggable(obj)
-    local dragging, dragStart, startPos
-    obj.InputBegan:Connect(function(input) if input.UserInputType == Enum.UserInputType.MouseButton1 then dragging = true; dragStart = input.Position; startPos = obj.Position end end)
-    UserInputService.InputChanged:Connect(function(input) if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then local delta = input.Position - dragStart; obj.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y) end end)
-    UserInputService.InputEnded:Connect(function(input) if input.UserInputType == Enum.UserInputType.MouseButton1 then dragging = false end end)
-end
-makeDraggable(mainFrame)
+-- Draggable
+local dragging, dragStart, startPos
+main.InputBegan:Connect(function(i) if i.UserInputType == Enum.UserInputType.MouseButton1 then dragging = true; dragStart = i.Position; startPos = main.Position end end)
+UserInputService.InputChanged:Connect(function(i) if dragging and i.UserInputType == Enum.UserInputType.MouseMovement then local delta = i.Position - dragStart; main.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y) end end)
+UserInputService.InputEnded:Connect(function(i) if i.UserInputType == Enum.UserInputType.MouseButton1 then dragging = false end end)
 
-print("✅ Nigga Killer Activated")
+print("✅ AFK-Stable Angelo Hub Loaded")
