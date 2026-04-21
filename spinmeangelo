@@ -14,22 +14,22 @@ local selectedCrates = {}
 local selectedPotions = {}
 
 -- ==========================================
--- STABILITY UTILITIES
+-- SMART UTILITIES
 -- ==========================================
 
--- Improved Plot Finder (Checks Name, ID, and Attributes)
+-- Find your plot by scanning all possible owner indicators
 local function getMyPlot()
-    local plots = workspace:FindFirstChild("Plots")
+    local plots = workspace:FindFirstChild("Plots") or workspace:FindFirstChild("Tycoons")
     if not plots then return nil end
     
     for _, plot in pairs(plots:GetChildren()) do
-        local owner = plot:FindFirstChild("Owner")
-        if owner then
-            if owner.Value == player.Name or tostring(owner.Value) == tostring(player.UserId) then
+        -- Check Value Objects (Owner, Player, User)
+        for _, child in pairs(plot:GetChildren()) do
+            if child:IsA("ValueBase") and (child.Value == player.Name or tostring(child.Value) == tostring(player.UserId)) then
                 return plot
             end
         end
-        -- Fallback: Check attributes if the game uses them
+        -- Check Attributes
         if plot:GetAttribute("Owner") == player.UserId or plot:GetAttribute("OwnerName") == player.Name then
             return plot
         end
@@ -38,56 +38,58 @@ local function getMyPlot()
 end
 
 -- ==========================================
--- OPTIMIZED LOOPS
+-- STABILIZED LOOPS
 -- ==========================================
 
--- AUTO COLLECT (REWRITTEN)
+-- AUTO COLLECT (Broad Search Version)
 task.spawn(function()
     while true do
         if toggles.AutoCollect then
             local char = player.Character
             local root = char and char:FindFirstChild("HumanoidRootPart")
-            
             if root then
                 local myPlot = getMyPlot()
-                if myPlot then
-                    local slots = myPlot:FindFirstChild("Slots")
-                    if slots then
-                        for _, slot in pairs(slots:GetChildren()) do
+                
+                pcall(function()
+                    -- If we found a plot, scan it for anything clickable/touchable
+                    if myPlot then
+                        for _, obj in pairs(myPlot:GetDescendants()) do
                             if not toggles.AutoCollect then break end
-                            local btn = slot:FindFirstChild("Button")
-                            -- Standard button check
-                            if btn and firetouchinterest then
-                                pcall(function()
-                                    firetouchinterest(btn, root, 0)
-                                    task.wait(0.05)
-                                    firetouchinterest(btn, root, 1)
-                                end)
+                            
+                            -- Method 1: Touch Interests (Buttons/Drops)
+                            if obj:IsA("TouchTransmitter") then
+                                local parent = obj.Parent
+                                if parent and parent:IsA("BasePart") then
+                                    firetouchinterest(parent, root, 0)
+                                    task.wait()
+                                    firetouchinterest(parent, root, 1)
+                                end
+                            
+                            -- Method 2: Proximity Prompts (Press E style)
+                            elseif obj:IsA("ProximityPrompt") then
+                                fireproximityprompt(obj)
                             end
                         end
                     end
-                else
-                    -- If no plot found, try a generic touch on nearby buttons as a backup
-                    pcall(function()
-                        for _, obj in pairs(workspace:GetDescendants()) do
-                            if obj.Name == "Button" and obj:IsA("BasePart") then
-                                local dist = (obj.Position - root.Position).Magnitude
-                                if dist < 15 and firetouchinterest then
-                                    firetouchinterest(obj, root, 0)
-                                    task.wait(0.05)
-                                    firetouchinterest(obj, root, 1)
-                                end
+                    
+                    -- Method 3: Global "Drop" collection (Coins/Yen on the ground)
+                    for _, drop in pairs(workspace:GetChildren()) do
+                        if drop:IsA("BasePart") and (drop.Name:find("Yen") or drop.Name:find("Coin") or drop.Name:find("Cash")) then
+                            if (drop.Position - root.Position).Magnitude < 25 then
+                                firetouchinterest(drop, root, 0)
+                                task.wait()
+                                firetouchinterest(drop, root, 1)
                             end
                         end
-                    end)
-                end
+                    end
+                end)
             end
         end
-        task.wait(2) -- Cooldown to prevent lag/crashing
+        task.wait(2.5) -- Balance between speed and anti-crash
     end
 end)
 
--- AUTO POTION (REMOVED 4H LIMIT)
+-- AUTO POTION (No Limits)
 task.spawn(function()
     while true do
         if toggles.Potions then
@@ -96,7 +98,7 @@ task.spawn(function()
                 pcall(function() 
                     ReplicatedStorage.Events.Potion.purchase:FireServer(item, 1) 
                 end)
-                task.wait(1)
+                task.wait(1.2)
             end
         end
         task.wait(2)
@@ -120,7 +122,7 @@ task.spawn(function()
 end)
 
 -- ==========================================
--- UI DESIGN (CLASSIC ANGELO POGI)
+-- RESTORED CLASSIC UI
 -- ==========================================
 if playerGui:FindFirstChild("AngeloPogiHub") then playerGui.AngeloPogiHub:Destroy() end
 
@@ -131,14 +133,13 @@ screenGui.ResetOnSpawn = false
 local main = Instance.new("Frame", screenGui)
 main.Size = UDim2.new(0, 340, 0, 400)
 main.Position = UDim2.new(0.5, -170, 0.5, -200)
-main.BackgroundColor3 = Color3.fromRGB(20, 20, 25)
+main.BackgroundColor3 = Color3.fromRGB(15, 15, 20)
 main.BorderSizePixel = 0
-main.Active = true
-Instance.new("UICorner", main).CornerRadius = UDim.new(0, 10)
+Instance.new("UICorner", main)
 
 local header = Instance.new("Frame", main)
 header.Size = UDim2.new(1, 0, 0, 50)
-header.BackgroundColor3 = Color3.fromRGB(30, 30, 40)
+header.BackgroundColor3 = Color3.fromRGB(25, 25, 35)
 Instance.new("UICorner", header)
 
 local title = Instance.new("TextLabel", header)
@@ -153,26 +154,26 @@ Instance.new("UIListLayout", container).Padding = UDim.new(0, 8)
 -- Components
 local function createSwitch(text, key, callback)
     local row = Instance.new("Frame", container)
-    row.Size = UDim2.new(0.95, 0, 0, 45); row.BackgroundColor3 = Color3.fromRGB(28, 28, 35); Instance.new("UICorner", row)
+    row.Size = UDim2.new(0.95, 0, 0, 45); row.BackgroundColor3 = Color3.fromRGB(22, 22, 28); Instance.new("UICorner", row)
     
     local lbl = Instance.new("TextLabel", row)
     lbl.Size = UDim2.new(0.7, 0, 1, 0); lbl.Position = UDim2.new(0, 12, 0, 0); lbl.Text = text; lbl.TextColor3 = Color3.new(0.8,0.8,0.8); lbl.BackgroundTransparency = 1; lbl.TextXAlignment = 0
     
     local btn = Instance.new("TextButton", row)
     btn.Size = UDim2.new(0, 40, 0, 20); btn.Position = UDim2.new(1, -50, 0.5, -10)
-    btn.BackgroundColor3 = toggles[key] and Color3.fromRGB(0, 200, 100) or Color3.fromRGB(60, 60, 70); btn.Text = ""
+    btn.BackgroundColor3 = toggles[key] and Color3.fromRGB(0, 255, 120) or Color3.fromRGB(50, 50, 60); btn.Text = ""
     Instance.new("UICorner", btn).CornerRadius = UDim.new(1, 0)
     
     btn.MouseButton1Click:Connect(function()
         toggles[key] = not toggles[key]
-        btn.BackgroundColor3 = toggles[key] and Color3.fromRGB(0, 200, 100) or Color3.fromRGB(60, 60, 70)
+        btn.BackgroundColor3 = toggles[key] and Color3.fromRGB(0, 255, 120) or Color3.fromRGB(50, 50, 60)
         if callback then task.spawn(function() callback(toggles[key]) end) end
     end)
 end
 
 local function createDropdown(text, list, selection, key)
     local frame = Instance.new("Frame", container)
-    frame.Size = UDim2.new(0.95, 0, 0, 45); frame.BackgroundColor3 = Color3.fromRGB(28, 28, 35); frame.ClipsDescendants = true; Instance.new("UICorner", frame)
+    frame.Size = UDim2.new(0.95, 0, 0, 45); frame.BackgroundColor3 = Color3.fromRGB(22, 22, 28); frame.ClipsDescendants = true; Instance.new("UICorner", frame)
     local btn = Instance.new("TextButton", frame)
     btn.Size = UDim2.new(1, 0, 0, 45); btn.Text = "  " .. text; btn.TextColor3 = Color3.new(1,1,1); btn.BackgroundTransparency = 1; btn.TextXAlignment = 0
     
@@ -182,10 +183,10 @@ local function createDropdown(text, list, selection, key)
 
     for _, name in pairs(list) do
         local opt = Instance.new("TextButton", inner)
-        opt.Text = name; opt.BackgroundColor3 = selection[name] and Color3.fromRGB(0, 120, 255) or Color3.fromRGB(40, 40, 50); opt.TextColor3 = Color3.new(1,1,1); Instance.new("UICorner", opt)
+        opt.Text = name; opt.BackgroundColor3 = selection[name] and Color3.fromRGB(0, 120, 255) or Color3.fromRGB(35, 35, 45); opt.TextColor3 = Color3.new(1,1,1); Instance.new("UICorner", opt)
         opt.MouseButton1Click:Connect(function()
             selection[name] = not selection[name] or nil
-            opt.BackgroundColor3 = selection[name] and Color3.fromRGB(0, 120, 255) or Color3.fromRGB(40, 40, 50)
+            opt.BackgroundColor3 = selection[name] and Color3.fromRGB(0, 120, 255) or Color3.fromRGB(35, 35, 45)
         end)
     end
     btn.MouseButton1Click:Connect(function()
@@ -216,4 +217,4 @@ main.InputBegan:Connect(function(i) if i.UserInputType == Enum.UserInputType.Mou
 UserInputService.InputChanged:Connect(function(i) if dragging and i.UserInputType == Enum.UserInputType.MouseMovement then local delta = i.Position - dragStart; main.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y) end end)
 UserInputService.InputEnded:Connect(function(i) if i.UserInputType == Enum.UserInputType.MouseButton1 then dragging = false end end)
 
-print("✅ Updated Angelo Hub - Auto-Collect Fixed")
+print("✅ Angelo Hub - Optimized Collection Loaded")
