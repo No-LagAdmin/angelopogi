@@ -17,25 +17,21 @@ local isMinimized = false
 -- STABLE BACKEND (Plot 1 Dedicated)
 -- ==========================================
 
--- AUTO COLLECT LOOP (Every 5 Seconds for Stability)
+-- AUTO COLLECT YEN LOOP
 task.spawn(function()
     while true do
         if toggles.AutoCollect then
             pcall(function()
                 local char = player.Character
                 local root = char and char:FindFirstChild("HumanoidRootPart")
-                
-                -- Target: Workspace.Plots.Plot1
                 local plot1 = workspace:FindFirstChild("Plots") and workspace.Plots:FindFirstChild("Plot1")
                 
                 if plot1 and root then
                     local slots = plot1:FindFirstChild("Slots")
                     if slots then
-                        -- Loop Slots 1 to 12 strictly
                         for i = 1, 12 do
                             local slot = slots:FindFirstChild(tostring(i))
                             local btn = slot and slot:FindFirstChild("Button")
-                            
                             if btn and btn:IsA("BasePart") then
                                 firetouchinterest(btn, root, 0)
                                 task.wait(0.05)
@@ -70,7 +66,7 @@ task.spawn(function()
 end)
 
 -- ==========================================
--- UI DESIGN (SPECIAL EDITION INTERFACE)
+-- UI DESIGN (ALIGNED & UPDATED)
 -- ==========================================
 if playerGui:FindFirstChild("AngeloFullPower") then playerGui.AngeloFullPower:Destroy() end
 
@@ -91,12 +87,12 @@ header.Size = UDim2.new(1, 0, 0, 50); header.BackgroundColor3 = Color3.fromRGB(2
 Instance.new("UICorner", header)
 
 local title = Instance.new("TextLabel", header)
-title.Size = UDim2.new(1, -60, 1, 0); title.Position = UDim2.new(0, 15, 0, 0)
+title.Size = UDim2.new(1, 0, 1, 0); title.Position = UDim2.new(0, 0, 0, 0)
 title.Text = "ANGELO FULL POWER SPECIAL EDITION"; title.TextColor3 = Color3.fromRGB(0, 255, 150)
-title.Font = Enum.Font.GothamBold; title.TextSize = 14; title.BackgroundTransparency = 1; title.TextXAlignment = 0
+title.Font = Enum.Font.GothamBold; title.TextSize = 14; title.BackgroundTransparency = 1; title.TextXAlignment = Enum.TextXAlignment.Center
 
 local minBtn = Instance.new("TextButton", header)
-minBtn.Size = UDim2.new(0, 40, 0, 40); minBtn.Position = UDim2.new(1, -45, 0, 5)
+minBtn.Size = UDim2.new(0, 35, 0, 35); minBtn.Position = UDim2.new(1, -42, 0, 7)
 minBtn.Text = "-"; minBtn.TextColor3 = Color3.new(1,1,1); minBtn.BackgroundColor3 = Color3.fromRGB(40, 40, 50)
 minBtn.Font = Enum.Font.GothamBold; Instance.new("UICorner", minBtn)
 
@@ -110,6 +106,7 @@ local function makeToggle(txt, key)
     btn.Size = UDim2.new(0.96, 0, 0, 42)
     btn.BackgroundColor3 = toggles[key] and Color3.fromRGB(0, 150, 80) or Color3.fromRGB(35, 35, 45)
     btn.Text = txt; btn.TextColor3 = Color3.new(1,1,1); btn.Font = Enum.Font.Gotham; btn.TextSize = 13
+    btn.TextXAlignment = Enum.TextXAlignment.Center -- Fixed Alignment
     Instance.new("UICorner", btn)
     btn.MouseButton1Click:Connect(function()
         toggles[key] = not toggles[key]
@@ -119,8 +116,8 @@ end
 
 local function makeGrid(txt, list, tab)
     local lbl = Instance.new("TextLabel", scroll)
-    lbl.Size = UDim2.new(1, 0, 0, 20); lbl.Text = "  " .. txt; lbl.TextColor3 = Color3.new(0.6,0.6,0.6)
-    lbl.Font = Enum.Font.Gotham; lbl.TextXAlignment = 0; lbl.BackgroundTransparency = 1
+    lbl.Size = UDim2.new(1, 0, 0, 25); lbl.Text = txt; lbl.TextColor3 = Color3.new(0.6,0.6,0.6)
+    lbl.Font = Enum.Font.Gotham; lbl.TextXAlignment = Enum.TextXAlignment.Center; lbl.BackgroundTransparency = 1
 
     local gFrame = Instance.new("Frame", scroll)
     gFrame.Size = UDim2.new(0.96, 0, 0, 110); gFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 25)
@@ -128,8 +125,8 @@ local function makeGrid(txt, list, tab)
 
     local gScroll = Instance.new("ScrollingFrame", gFrame)
     gScroll.Size = UDim2.new(1, -10, 1, -10); gScroll.Position = UDim2.new(0, 5, 0, 5)
-    gScroll.BackgroundTransparency = 1; gScroll.CanvasSize = UDim2.new(0,0,3,0); gScroll.ScrollBarThickness = 0
-    local grid = Instance.new("UIGridLayout", gScroll); grid.CellSize = UDim2.new(0, 100, 0, 28)
+    gScroll.BackgroundTransparency = 1; gScroll.CanvasSize = UDim2.new(0,0,3.5,0); gScroll.ScrollBarThickness = 0
+    local grid = Instance.new("UIGridLayout", gScroll); grid.CellSize = UDim2.new(0, 100, 0, 28); grid.HorizontalAlignment = Enum.HorizontalAlignment.Center
 
     for _, name in pairs(list) do
         local b = Instance.new("TextButton", gScroll)
@@ -144,10 +141,10 @@ local function makeGrid(txt, list, tab)
 end
 
 -- UI Sections
-local crates = {"Heaven", "Music", "Cyber", "Steampunk", "Graffiti", "Vampiric", "Manga", "Samurai", "Royal", "Magma", "Hell", "Celestial", "Vortex", "Cursed","Devilous"}
+local crates = {"Heaven", "Devilous", "Music", "Cyber", "Steampunk", "Graffiti", "Vampiric", "Manga", "Samurai", "Royal", "Magma", "Hell", "Celestial", "Vortex", "Cursed"}
 local potions = {"Yen", "Lucky", "Mutation", "Super Yen", "Rich", "Clover", "Angelic", "Bank", "Greed"}
 
-makeToggle("Auto Collect BETA", "AutoCollect")
+makeToggle("Auto Collect Yen (Plot 1 Only)", "AutoCollect")
 makeToggle("Anti-AFK System", "AntiAFK")
 makeToggle("Enable Auto Buy Crates", "Crates")
 makeGrid("Select Crates", crates, selectedCrates)
@@ -176,4 +173,4 @@ player.Idled:Connect(function()
     end
 end)
 
-print("✅ Angelo Full Power Special Edition Loaded.")
+print("✅ Angelo Full Power Special Edition (v4.1) Loaded.")
