@@ -38,56 +38,62 @@ end
 loadConfig()
 
 -- ==========================================
--- AFK-OPTIMIZED LOOPS
+-- STABILITY UTILITIES
 -- ==========================================
 
--- AUTO POTION (Lower frequency to prevent Network Lag)
+-- Find player plot to avoid scanning the whole server
+local function getMyPlot()
+    local plots = workspace:FindFirstChild("Plots")
+    if not plots then return nil end
+    for _, plot in pairs(plots:GetChildren()) do
+        if plot:FindFirstChild("Owner") and plot.Owner.Value == player.Name then
+            return plot
+        end
+    end
+    return nil
+end
+
+-- ==========================================
+-- OPTIMIZED LOOPS (ULTRA-STABLE)
+-- ==========================================
+
+-- AUTO POTION
 task.spawn(function()
     while true do
         if toggles.Potions then
             for item, _ in pairs(selectedPotions) do
                 if not toggles.Potions then break end
-                pcall(function() 
-                    ReplicatedStorage.Events.Potion.purchase:FireServer(item, 1) 
-                end)
-                task.wait(1.5) -- Increased delay for AFK stability
+                pcall(function() ReplicatedStorage.Events.Potion.purchase:FireServer(item, 1) end)
+                task.wait(2) -- Slow and steady for AFK
             end
         end
-        task.wait(2)
+        task.wait(5)
     end
 end)
 
--- AUTO COLLECT (Safety Wrapped)
+-- AUTO COLLECT (Plot-Specific to prevent crashes)
 task.spawn(function()
     while true do
         if toggles.AutoCollect then
             local char = player.Character
             local root = char and char:FindFirstChild("HumanoidRootPart")
-            
             if root then
-                pcall(function()
-                    local plots = workspace:FindFirstChild("Plots")
-                    if plots then
-                        for p = 1, 12 do
-                            if not toggles.AutoCollect then break end
-                            local plot = plots:FindFirstChild("Plot" .. p)
-                            local slots = plot and plot:FindFirstChild("Slots")
-                            if slots then
-                                for _, slot in pairs(slots:GetChildren()) do
-                                    local btn = slot:FindFirstChild("Button")
-                                    if btn and firetouchinterest then
-                                        firetouchinterest(btn, root, 0)
-                                        task.wait(0.05) -- Safety yield
-                                        firetouchinterest(btn, root, 1)
-                                    end
-                                end
+                local myPlot = getMyPlot()
+                if myPlot and myPlot:FindFirstChild("Slots") then
+                    pcall(function()
+                        for _, slot in pairs(myPlot.Slots:GetChildren()) do
+                            local btn = slot:FindFirstChild("Button")
+                            if btn and firetouchinterest then
+                                firetouchinterest(btn, root, 0)
+                                task.wait(0.1)
+                                firetouchinterest(btn, root, 1)
                             end
                         end
-                    end
-                end)
+                    end)
+                end
             end
         end
-        task.wait(3) -- Slowed down to prevent memory crashes during long AFK
+        task.wait(5) -- Long wait to let memory clear
     end
 end)
 
@@ -97,18 +103,16 @@ task.spawn(function()
         if toggles.Crates then
             for item, _ in pairs(selectedCrates) do
                 if not toggles.Crates then break end
-                pcall(function() 
-                    ReplicatedStorage.Events.Crate.purchase:FireServer(item, 1) 
-                end)
-                task.wait(1)
+                pcall(function() ReplicatedStorage.Events.Crate.purchase:FireServer(item, 1) end)
+                task.wait(1.5)
             end
         end
-        task.wait(2)
+        task.wait(3)
     end
 end)
 
 -- ==========================================
--- CLASSIC UI
+-- OLD UI DESIGN
 -- ==========================================
 if playerGui:FindFirstChild("AngeloPogiHub") then playerGui.AngeloPogiHub:Destroy() end
 
@@ -121,7 +125,7 @@ main.Size = UDim2.new(0, 340, 0, 400)
 main.Position = UDim2.new(0.5, -170, 0.5, -200)
 main.BackgroundColor3 = Color3.fromRGB(20, 20, 25)
 main.BorderSizePixel = 0
-Instance.new("UICorner", main)
+Instance.new("UICorner", main).CornerRadius = UDim.new(0, 10)
 
 local header = Instance.new("Frame", main)
 header.Size = UDim2.new(1, 0, 0, 50)
@@ -134,14 +138,13 @@ title.Size = UDim2.new(1, 0, 1, 0); title.Text = "  ANGELO POGI HUB"; title.Text
 local container = Instance.new("ScrollingFrame", main)
 container.Size = UDim2.new(1, -10, 1, -60)
 container.Position = UDim2.new(0, 5, 0, 55)
-container.BackgroundTransparency = 1; container.AutomaticCanvasSize = 2
+container.BackgroundTransparency = 1; container.ScrollBarThickness = 2; container.AutomaticCanvasSize = 2
 Instance.new("UIListLayout", container).Padding = UDim.new(0, 8)
 
 -- Components
 local function createSwitch(text, key, callback)
     local row = Instance.new("Frame", container)
-    row.Size = UDim2.new(0.95, 0, 0, 45); row.BackgroundColor3 = Color3.fromRGB(28, 28, 35)
-    Instance.new("UICorner", row)
+    row.Size = UDim2.new(0.95, 0, 0, 45); row.BackgroundColor3 = Color3.fromRGB(28, 28, 35); Instance.new("UICorner", row)
     
     local lbl = Instance.new("TextLabel", row)
     lbl.Size = UDim2.new(0.7, 0, 1, 0); lbl.Position = UDim2.new(0, 12, 0, 0); lbl.Text = text; lbl.TextColor3 = Color3.new(0.8,0.8,0.8); lbl.BackgroundTransparency = 1; lbl.TextXAlignment = 0
@@ -185,7 +188,7 @@ local function createDropdown(text, list, selection, key)
     createSwitch("Enable " .. text, key)
 end
 
--- Initialization
+-- Init
 local crates = {"Heaven", "Music", "Cyber", "Steampunk", "Graffiti", "Vampiric", "Construction", "Manga", "Samurai", "Royal", "Magma", "Porcelain", "Hell", "Ghost", "Abandoned", "Haunted", "Celestial", "Red Moon", "Vortex", "Cursed", "Devilous"}
 local potions = {"Yen", "Lucky", "Mutation", "Super Yen", "Super Lucky", "Rich", "Clover", "Angelic", "Bank", "Evil", "Fairy", "Greed"}
 
@@ -206,4 +209,4 @@ main.InputBegan:Connect(function(i) if i.UserInputType == Enum.UserInputType.Mou
 UserInputService.InputChanged:Connect(function(i) if dragging and i.UserInputType == Enum.UserInputType.MouseMovement then local delta = i.Position - dragStart; main.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y) end end)
 UserInputService.InputEnded:Connect(function(i) if i.UserInputType == Enum.UserInputType.MouseButton1 then dragging = false end end)
 
-print("✅ AFK-Stable Angelo Hub Loaded")
+print("✅ Final Stable Angelo Hub Loaded")
