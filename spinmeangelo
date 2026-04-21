@@ -8,7 +8,7 @@ local HttpService = game:GetService("HttpService")
 local player = Players.LocalPlayer
 
 -- ==========================================
--- CONFIG SYSTEM
+-- CONFIG SYSTEM (Save/Load)
 -- ==========================================
 _G.toggles = { AutoCollect = false, AntiAFK = false, Crates = false, Potions = false, EquipBest = false }
 _G.selectedCrates = {}
@@ -37,11 +37,12 @@ for _, oldUI in pairs(CoreGui:GetChildren()) do
 end
 
 -- ==========================================
--- BACKEND LOOPS
+-- OPTIMIZED BACKEND LOOPS (Anti-Crash)
 -- ==========================================
 
+-- SMART EQUIP BEST (Checks if necessary to avoid spam)
 task.spawn(function()
-    while task.wait(5) do
+    while task.wait(10) do 
         if _G.toggles.EquipBest then
             pcall(function()
                 local remote = ReplicatedStorage:FindFirstChild("equipBest", true) or 
@@ -54,16 +55,16 @@ task.spawn(function()
     end
 end)
 
+-- AUTO COLLECT (Only runs if toggled)
 task.spawn(function()
-    while task.wait(1) do
+    while task.wait(1.5) do
         if _G.toggles.AutoCollect then
             pcall(function()
                 local root = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
                 if root then
                     for _, v in pairs(workspace:GetDescendants()) do
                         if v.Name == "Button" and v:IsA("BasePart") and v.Parent.Name:match("%d") then
-                            local dist = (root.Position - v.Position).Magnitude
-                            if dist < 50 then
+                            if (root.Position - v.Position).Magnitude < 50 then
                                 firetouchinterest(v, root, 0)
                                 task.wait()
                                 firetouchinterest(v, root, 1)
@@ -76,14 +77,15 @@ task.spawn(function()
     end
 end)
 
+-- OPTIMIZED AUTO BUY (Checks selection before firing)
 task.spawn(function()
-    while task.wait(1.5) do
+    while task.wait(2) do -- Increased delay to prevent Wave crashing
         if _G.toggles.Crates then
             for crate, state in pairs(_G.selectedCrates) do
                 if state then 
                     local r = ReplicatedStorage:FindFirstChild("purchase", true)
                     if r then r:FireServer(crate, 1) end
-                    task.wait(0.1) 
+                    task.wait(0.2) 
                 end
             end
         end
@@ -92,7 +94,7 @@ task.spawn(function()
                 if state then 
                     local r = ReplicatedStorage:FindFirstChild("use", true) or ReplicatedStorage:FindFirstChild("purchase", true)
                     if r then r:FireServer(pot, 1) end
-                    task.wait(0.1) 
+                    task.wait(0.2) 
                 end
             end
         end
@@ -114,7 +116,7 @@ header.Size = UDim2.new(1, 0, 0, 45); header.BackgroundColor3 = Color3.fromRGB(2
 
 local title = Instance.new("TextLabel", header)
 title.Size = UDim2.new(1, 0, 1, 0); title.BackgroundTransparency = 1
-title.Text = "ANGELO HUB v6.9 (NEW POTIONS)"; title.TextColor3 = Color3.fromRGB(0, 255, 150)
+title.Text = "ANGELO HUB v7.0 (ANTI-CRASH)"; title.TextColor3 = Color3.fromRGB(0, 255, 150)
 title.Font = Enum.Font.GothamBold; title.TextSize = 15
 
 local scroll = Instance.new("ScrollingFrame", main)
@@ -174,4 +176,4 @@ makeToggle("Anti-AFK System", "AntiAFK")
 makeSection("Crates", "Crates", crates, _G.selectedCrates)
 makeSection("Potions", "Potions", potions, _G.selectedPotions)
 
-print("✅ v6.9 Loaded. Added Super Lucky, Evil, and Fairy to Potions.")
+print("✅ v7.0 Anti-Crash Loaded. Reduced remote spam.")
