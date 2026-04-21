@@ -8,45 +8,29 @@ local HttpService = game:GetService("HttpService")
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
 
--- File Settings
-local filename = "AngeloPogiHub_Config.json"
-
 -- Logic Variables
 local toggles = { Crates = false, Potions = false, AntiAFK = false, EquipBest = false, AutoCollect = false }
 local selectedCrates = {}
 local selectedPotions = {}
 
 -- ==========================================
--- CONFIGURATION SYSTEM
--- ==========================================
-local function saveConfig()
-    local data = { Toggles = toggles, Crates = selectedCrates, Potions = selectedPotions }
-    pcall(function() if writefile then writefile(filename, HttpService:JSONEncode(data)) end end)
-end
-
-local function loadConfig()
-    if isfile and isfile(filename) then
-        pcall(function()
-            local decoded = HttpService:JSONDecode(readfile(filename))
-            if decoded.Toggles then for k, v in pairs(decoded.Toggles) do toggles[k] = v end end
-            if decoded.Crates then for k, v in pairs(decoded.Crates) do selectedCrates[k] = v end end
-            if decoded.Potions then for k, v in pairs(decoded.Potions) do selectedPotions[k] = v end end
-        end)
-    end
-end
-
-loadConfig()
-
--- ==========================================
 -- STABILITY UTILITIES
 -- ==========================================
 
--- Find player plot to avoid scanning the whole server
+-- Improved Plot Finder (Checks Name, ID, and Attributes)
 local function getMyPlot()
     local plots = workspace:FindFirstChild("Plots")
     if not plots then return nil end
+    
     for _, plot in pairs(plots:GetChildren()) do
-        if plot:FindFirstChild("Owner") and plot.Owner.Value == player.Name then
+        local owner = plot:FindFirstChild("Owner")
+        if owner then
+            if owner.Value == player.Name or tostring(owner.Value) == tostring(player.UserId) then
+                return plot
+            end
+        end
+        -- Fallback: Check attributes if the game uses them
+        if plot:GetAttribute("Owner") == player.UserId or plot:GetAttribute("OwnerName") == player.Name then
             return plot
         end
     end
@@ -54,46 +38,68 @@ local function getMyPlot()
 end
 
 -- ==========================================
--- OPTIMIZED LOOPS (ULTRA-STABLE)
+-- OPTIMIZED LOOPS
 -- ==========================================
 
--- AUTO POTION
-task.spawn(function()
-    while true do
-        if toggles.Potions then
-            for item, _ in pairs(selectedPotions) do
-                if not toggles.Potions then break end
-                pcall(function() ReplicatedStorage.Events.Potion.purchase:FireServer(item, 1) end)
-                task.wait(2) -- Slow and steady for AFK
-            end
-        end
-        task.wait(5)
-    end
-end)
-
--- AUTO COLLECT (Plot-Specific to prevent crashes)
+-- AUTO COLLECT (REWRITTEN)
 task.spawn(function()
     while true do
         if toggles.AutoCollect then
             local char = player.Character
             local root = char and char:FindFirstChild("HumanoidRootPart")
+            
             if root then
                 local myPlot = getMyPlot()
-                if myPlot and myPlot:FindFirstChild("Slots") then
-                    pcall(function()
-                        for _, slot in pairs(myPlot.Slots:GetChildren()) do
+                if myPlot then
+                    local slots = myPlot:FindFirstChild("Slots")
+                    if slots then
+                        for _, slot in pairs(slots:GetChildren()) do
+                            if not toggles.AutoCollect then break end
                             local btn = slot:FindFirstChild("Button")
+                            -- Standard button check
                             if btn and firetouchinterest then
-                                firetouchinterest(btn, root, 0)
-                                task.wait(0.1)
-                                firetouchinterest(btn, root, 1)
+                                pcall(function()
+                                    firetouchinterest(btn, root, 0)
+                                    task.wait(0.05)
+                                    firetouchinterest(btn, root, 1)
+                                end)
+                            end
+                        end
+                    end
+                else
+                    -- If no plot found, try a generic touch on nearby buttons as a backup
+                    pcall(function()
+                        for _, obj in pairs(workspace:GetDescendants()) do
+                            if obj.Name == "Button" and obj:IsA("BasePart") then
+                                local dist = (obj.Position - root.Position).Magnitude
+                                if dist < 15 and firetouchinterest then
+                                    firetouchinterest(obj, root, 0)
+                                    task.wait(0.05)
+                                    firetouchinterest(obj, root, 1)
+                                end
                             end
                         end
                     end)
                 end
             end
         end
-        task.wait(5) -- Long wait to let memory clear
+        task.wait(2) -- Cooldown to prevent lag/crashing
+    end
+end)
+
+-- AUTO POTION (REMOVED 4H LIMIT)
+task.spawn(function()
+    while true do
+        if toggles.Potions then
+            for item, _ in pairs(selectedPotions) do
+                if not toggles.Potions then break end
+                pcall(function() 
+                    ReplicatedStorage.Events.Potion.purchase:FireServer(item, 1) 
+                end)
+                task.wait(1)
+            end
+        end
+        task.wait(2)
     end
 end)
 
@@ -103,16 +109,18 @@ task.spawn(function()
         if toggles.Crates then
             for item, _ in pairs(selectedCrates) do
                 if not toggles.Crates then break end
-                pcall(function() ReplicatedStorage.Events.Crate.purchase:FireServer(item, 1) end)
-                task.wait(1.5)
+                pcall(function() 
+                    ReplicatedStorage.Events.Crate.purchase:FireServer(item, 1) 
+                end)
+                task.wait(0.8)
             end
         end
-        task.wait(3)
+        task.wait(2)
     end
 end)
 
 -- ==========================================
--- OLD UI DESIGN
+-- UI DESIGN (CLASSIC ANGELO POGI)
 -- ==========================================
 if playerGui:FindFirstChild("AngeloPogiHub") then playerGui.AngeloPogiHub:Destroy() end
 
@@ -125,6 +133,7 @@ main.Size = UDim2.new(0, 340, 0, 400)
 main.Position = UDim2.new(0.5, -170, 0.5, -200)
 main.BackgroundColor3 = Color3.fromRGB(20, 20, 25)
 main.BorderSizePixel = 0
+main.Active = true
 Instance.new("UICorner", main).CornerRadius = UDim.new(0, 10)
 
 local header = Instance.new("Frame", main)
@@ -157,7 +166,6 @@ local function createSwitch(text, key, callback)
     btn.MouseButton1Click:Connect(function()
         toggles[key] = not toggles[key]
         btn.BackgroundColor3 = toggles[key] and Color3.fromRGB(0, 200, 100) or Color3.fromRGB(60, 60, 70)
-        saveConfig()
         if callback then task.spawn(function() callback(toggles[key]) end) end
     end)
 end
@@ -178,7 +186,6 @@ local function createDropdown(text, list, selection, key)
         opt.MouseButton1Click:Connect(function()
             selection[name] = not selection[name] or nil
             opt.BackgroundColor3 = selection[name] and Color3.fromRGB(0, 120, 255) or Color3.fromRGB(40, 40, 50)
-            saveConfig()
         end)
     end
     btn.MouseButton1Click:Connect(function()
@@ -209,4 +216,4 @@ main.InputBegan:Connect(function(i) if i.UserInputType == Enum.UserInputType.Mou
 UserInputService.InputChanged:Connect(function(i) if dragging and i.UserInputType == Enum.UserInputType.MouseMovement then local delta = i.Position - dragStart; main.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y) end end)
 UserInputService.InputEnded:Connect(function(i) if i.UserInputType == Enum.UserInputType.MouseButton1 then dragging = false end end)
 
-print("✅ Final Stable Angelo Hub Loaded")
+print("✅ Updated Angelo Hub - Auto-Collect Fixed")
