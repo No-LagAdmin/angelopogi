@@ -15,48 +15,51 @@ local function saveConfig()
         crates = _G.selectedCrates,
         potions = _G.selectedPotions
     }
-    writefile(fileName, HttpService:JSONEncode(data))
+    pcall(function() writefile(fileName, HttpService:JSONEncode(data)) end)
 end
 
 local function loadConfig()
     if isfile(fileName) then
-        local data = HttpService:JSONDecode(readfile(fileName))
-        _G.toggles = data.toggles or _G.toggles
-        _G.selectedCrates = data.crates or _G.selectedCrates
-        _G.selectedPotions = data.potions or _G.selectedPotions
+        local success, data = pcall(function() return HttpService:JSONDecode(readfile(fileName)) end)
+        if success then
+            _G.toggles = data.toggles or _G.toggles
+            _G.selectedCrates = data.crates or _G.selectedCrates
+            _G.selectedPotions = data.potions or _G.selectedPotions
+        end
     end
 end
 
--- Global Logic Variables
 _G.toggles = { AutoCollect = false, AntiAFK = false, Crates = false, Potions = false }
 _G.selectedCrates = {}
 _G.selectedPotions = {}
-local isMinimized = false
-
-loadConfig() -- Load previous settings on startup
+loadConfig()
 
 -- ==========================================
--- STABLE BACKEND (Plot 1 Dedicated)
+-- CRASH-PROOF COLLECTOR (Plot 1 Only)
 -- ==========================================
-
--- AUTO COLLECT YEN (5s Interval for Stability)
 task.spawn(function()
     while true do
         if _G.toggles.AutoCollect then
             pcall(function()
                 local char = player.Character
                 local root = char and char:FindFirstChild("HumanoidRootPart")
-                local plot1 = workspace:FindFirstChild("Plots") and workspace.Plots:FindFirstChild("Plot1")
+                
+                -- Safety Check: Ensure Plots and Plot1 exist in Workspace
+                local plotsFolder = workspace:FindFirstChild("Plots")
+                local plot1 = plotsFolder and plotsFolder:FindFirstChild("Plot1")
                 
                 if plot1 and root then
                     local slots = plot1:FindFirstChild("Slots")
                     if slots then
                         for i = 1, 12 do
-                            local slot = slots:FindFirstChild(tostring(i))
+                            local slotName = tostring(i)
+                            local slot = slots:FindFirstChild(slotName)
                             local btn = slot and slot:FindFirstChild("Button")
-                            if btn and btn:IsA("BasePart") then
+                            
+                            -- CRITICAL FIX: Only fire if the button and its TouchInterest exist
+                            if btn and btn:IsA("BasePart") and btn:FindFirstChildOfClass("TouchInterest") then
                                 firetouchinterest(btn, root, 0)
-                                task.wait(0.05)
+                                task.wait(0.03) -- Tiny delay to prevent physics lag
                                 firetouchinterest(btn, root, 1)
                             end
                         end
@@ -64,11 +67,13 @@ task.spawn(function()
                 end
             end)
         end
-        task.wait(5) 
+        task.wait(5) -- 5-second cooldown as requested
     end
 end)
 
+-- ==========================================
 -- AUTO BUY/USE LOOP
+-- ==========================================
 task.spawn(function()
     while true do
         if _G.toggles.Crates then
@@ -88,7 +93,7 @@ task.spawn(function()
 end)
 
 -- ==========================================
--- UI DESIGN (FINAL SPECIAL EDITION)
+-- UI DESIGN (FINAL V5.1)
 -- ==========================================
 if playerGui:FindFirstChild("AngeloFinalHub") then playerGui.AngeloFinalHub:Destroy() end
 
@@ -163,15 +168,9 @@ local function makeGrid(txt, list, tab)
     end
 end
 
--- Final Configuration Sequence
-local crates = {
-    "Hell", "Heaven", "Music", "Cyber", "Steampunk", "Graffiti", "Vampiric", 
-    "Construction", "Manga", "Samurai", "Royal", "Magma", "Ghost", "Abandoned", 
-    "Haunted", "Celestial", "Red Moon", "Vortex", "Cursed", "Devilous"
-}
+local crates = {"Hell", "Heaven", "Music", "Cyber", "Steampunk", "Graffiti", "Vampiric", "Construction", "Manga", "Samurai", "Royal", "Magma", "Ghost", "Abandoned", "Haunted", "Celestial", "Red Moon", "Vortex", "Cursed", "Devilous"}
 local potions = {"Yen", "Lucky", "Mutation", "Super Yen", "Rich", "Clover", "Angelic", "Bank", "Greed"}
 
--- Initialize UI
 makeToggle("Auto Collect Yen (Plot 1 Only)", "AutoCollect")
 makeToggle("Anti-AFK System", "AntiAFK")
 makeToggle("Enable Auto Buy Crates", "Crates")
@@ -194,10 +193,12 @@ end)
 -- Anti-AFK
 player.Idled:Connect(function()
     if _G.toggles.AntiAFK then
-        game:GetService("VirtualUser"):Button2Down(Vector2.new(0,0), workspace.CurrentCamera.CFrame)
-        task.wait(1)
-        game:GetService("VirtualUser"):Button2Up(Vector2.new(0,0), workspace.CurrentCamera.CFrame)
+        pcall(function()
+            game:GetService("VirtualUser"):Button2Down(Vector2.new(0,0), workspace.CurrentCamera.CFrame)
+            task.wait(1)
+            game:GetService("VirtualUser"):Button2Up(Vector2.new(0,0), workspace.CurrentCamera.CFrame)
+        end)
     end
 end)
 
-print("✅ Angelo Full Power Special Edition (Final v5.0) Loaded with Config Support.")
+print("✅ Angelo Final Hub v5.1 (Crash-Fix) Ready.")
