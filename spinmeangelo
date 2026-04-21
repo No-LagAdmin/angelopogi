@@ -1,73 +1,60 @@
 -- Services
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local TweenService = game:GetService("TweenService")
 local UserInputService = game:GetService("UserInputService")
 local HttpService = game:GetService("HttpService")
 
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
 
--- File Settings
-local filename = "AngeloPogi_Config.json"
-
 -- Logic Variables
-local toggles = { Crates = false, Potions = false, AntiAFK = false, EquipBest = false, AutoCollect = false }
+local toggles = { AutoCollect = false, AntiAFK = false, Crates = false, Potions = false, EquipBest = false }
 local selectedCrates = {}
 local selectedPotions = {}
 
 -- ==========================================
--- CONFIGURATION SYSTEM
--- ==========================================
-local function saveConfig()
-    local data = { Toggles = toggles, Crates = selectedCrates, Potions = selectedPotions }
-    pcall(function() if writefile then writefile(filename, HttpService:JSONEncode(data)) end end)
-end
-
-local function loadConfig()
-    if isfile and isfile(filename) then
-        pcall(function()
-            local decoded = HttpService:JSONDecode(readfile(filename))
-            for k, v in pairs(decoded.Toggles or {}) do toggles[k] = v end
-            selectedCrates = decoded.Crates or {}
-            selectedPotions = decoded.Potions or {}
-        end)
-    end
-end
-loadConfig()
-
--- ==========================================
--- STABLE BACKEND LOGIC
+-- STABLE BACKEND (The "No-Crash" Engine)
 -- ==========================================
 
--- FIXED AUTO COLLECT (Server-Sided Remote Call)
 task.spawn(function()
     while true do
         if toggles.AutoCollect then
             pcall(function()
-                -- Direct remote call to collect money (Bypasses physics crashes)
-                local remote = ReplicatedStorage:FindFirstChild("Events") and ReplicatedStorage.Events:FindFirstChild("Plot")
-                if remote and remote:FindFirstChild("collectMoney") then
-                    remote.collectMoney:FireServer()
+                -- 1. Try Direct Remote (Fastest & Safest)
+                local plotEvents = ReplicatedStorage:FindFirstChild("Events") and ReplicatedStorage.Events:FindFirstChild("Plot")
+                if plotEvents and plotEvents:FindFirstChild("collectMoney") then
+                    plotEvents.collectMoney:FireServer()
+                else
+                    -- 2. Physical Backup (Optimized to prevent crashing)
+                    local root = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+                    if root then
+                        for _, v in pairs(workspace:GetDescendants()) do
+                            if v.Name == "Collect" and v:IsA("BasePart") then
+                                firetouchinterest(v, root, 0)
+                                task.wait(0.1)
+                                firetouchinterest(v, root, 1)
+                            end
+                        end
+                    end
                 end
             end)
         end
-        task.wait(1) -- Faster collection, zero lag
+        task.wait(2) -- Buffered wait to keep physics stable
     end
 end)
 
--- AUTO ACTIONS
+-- Auto Buy/Equip Loop
 task.spawn(function()
     while true do
-        if toggles.Potions then
-            for item, _ in pairs(selectedPotions) do
-                pcall(function() ReplicatedStorage.Events.Potion.purchase:FireServer(item, 1) end)
+        if toggles.Crates then
+            for crate, _ in pairs(selectedCrates) do
+                pcall(function() ReplicatedStorage.Events.Crate.purchase:FireServer(crate, 1) end)
                 task.wait(0.5)
             end
         end
-        if toggles.Crates then
-            for item, _ in pairs(selectedCrates) do
-                pcall(function() ReplicatedStorage.Events.Crate.purchase:FireServer(item, 1) end)
+        if toggles.Potions then
+            for potion, _ in pairs(selectedPotions) do
+                pcall(function() ReplicatedStorage.Events.Potion.purchase:FireServer(potion, 1) end)
                 task.wait(0.5)
             end
         end
@@ -79,106 +66,89 @@ task.spawn(function()
 end)
 
 -- ==========================================
--- SIMPLE & CLEAN UI
+-- CLEAN & ACCESSIBLE UI
 -- ==========================================
-if playerGui:FindFirstChild("AngeloHub") then playerGui.AngeloHub:Destroy() end
+if playerGui:FindFirstChild("AngeloHubV4") then playerGui.AngeloHubV4:Destroy() end
 
 local sg = Instance.new("ScreenGui", playerGui)
-sg.Name = "AngeloHub"
+sg.Name = "AngeloHubV4"
 sg.ResetOnSpawn = false
 
 local main = Instance.new("Frame", sg)
-main.Size = UDim2.new(0, 320, 0, 380)
-main.Position = UDim2.new(0.5, -160, 0.5, -190)
-main.BackgroundColor3 = Color3.fromRGB(15, 15, 20)
+main.Size = UDim2.new(0, 320, 0, 420)
+main.Position = UDim2.new(0.5, -160, 0.5, -210)
+main.BackgroundColor3 = Color3.fromRGB(18, 18, 24)
 main.BorderSizePixel = 0
-Instance.new("UICorner", main).CornerRadius = UDim.new(0, 8)
+Instance.new("UICorner", main)
 
--- Header
 local header = Instance.new("Frame", main)
-header.Size = UDim2.new(1, 0, 0, 40)
-header.BackgroundColor3 = Color3.fromRGB(25, 25, 35)
-Instance.new("UICorner", header).CornerRadius = UDim.new(0, 8)
+header.Size = UDim2.new(1, 0, 0, 45); header.BackgroundColor3 = Color3.fromRGB(28, 28, 38)
+Instance.new("UICorner", header)
 
 local title = Instance.new("TextLabel", header)
-title.Size = UDim2.new(1, -10, 1, 0)
-title.Position = UDim2.new(0, 10, 0, 0)
-title.Text = "ANGELO POGI HUB"; title.TextColor3 = Color3.fromRGB(0, 255, 150)
-title.Font = Enum.Font.GothamBold; title.TextSize = 14; title.BackgroundTransparency = 1; title.TextXAlignment = 0
+title.Size = UDim2.new(1, 0, 1, 0); title.Text = "ANGELO POGI HUB V4"; title.TextColor3 = Color3.fromRGB(0, 255, 160)
+title.Font = Enum.Font.GothamBold; title.BackgroundTransparency = 1
 
-local container = Instance.new("ScrollingFrame", main)
-container.Size = UDim2.new(1, -10, 1, -50); container.Position = UDim2.new(0, 5, 0, 45)
-container.BackgroundTransparency = 1; container.ScrollBarThickness = 2; container.AutomaticCanvasSize = 2
-Instance.new("UIListLayout", container).Padding = UDim.new(0, 6)
+local scroll = Instance.new("ScrollingFrame", main)
+scroll.Size = UDim2.new(1, -15, 1, -55); scroll.Position = UDim2.new(0, 7, 0, 50)
+scroll.BackgroundTransparency = 1; scroll.ScrollBarThickness = 2; scroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
+Instance.new("UIListLayout", scroll).Padding = UDim.new(0, 8)
 
--- Components
-local function createToggle(txt, key)
-    local btn = Instance.new("TextButton", container)
-    btn.Size = UDim2.new(0.96, 0, 0, 35)
-    btn.BackgroundColor3 = toggles[key] and Color3.fromRGB(0, 150, 80) or Color3.fromRGB(30, 30, 40)
-    btn.Text = txt; btn.TextColor3 = Color3.new(1,1,1); btn.Font = Enum.Font.Gotham; btn.TextSize = 12
+-- UI Builders
+local function makeToggle(txt, key)
+    local btn = Instance.new("TextButton", scroll)
+    btn.Size = UDim2.new(0.95, 0, 0, 38)
+    btn.BackgroundColor3 = toggles[key] and Color3.fromRGB(0, 180, 100) or Color3.fromRGB(35, 35, 45)
+    btn.Text = txt; btn.TextColor3 = Color3.new(1,1,1); btn.Font = Enum.Font.Gotham
     Instance.new("UICorner", btn)
-    
     btn.MouseButton1Click:Connect(function()
         toggles[key] = not toggles[key]
-        btn.BackgroundColor3 = toggles[key] and Color3.fromRGB(0, 150, 80) or Color3.fromRGB(30, 30, 40)
-        saveConfig()
+        btn.BackgroundColor3 = toggles[key] and Color3.fromRGB(0, 180, 100) or Color3.fromRGB(35, 35, 45)
     end)
 end
 
-local function createSelection(txt, list, selection)
-    local frame = Instance.new("Frame", container)
-    frame.Size = UDim2.new(0.96, 0, 0, 100); frame.BackgroundColor3 = Color3.fromRGB(25, 25, 30)
-    Instance.new("UICorner", frame)
-    
-    local lbl = Instance.new("TextLabel", frame)
-    lbl.Size = UDim2.new(1, 0, 0, 25); lbl.Text = "  Select " .. txt; lbl.TextColor3 = Color3.new(0.6,0.6,0.6)
-    lbl.BackgroundTransparency = 1; lbl.TextXAlignment = 0; lbl.Font = Enum.Font.Gotham; lbl.TextSize = 11
+local function makeGrid(txt, list, tab)
+    local lbl = Instance.new("TextLabel", scroll)
+    lbl.Size = UDim2.new(1, 0, 0, 20); lbl.Text = "  " .. txt; lbl.TextColor3 = Color3.new(0.6,0.6,0.6)
+    lbl.Font = Enum.Font.Gotham; lbl.TextXAlignment = 0; lbl.BackgroundTransparency = 1
 
-    local scroller = Instance.new("ScrollingFrame", frame)
-    scroller.Size = UDim2.new(1, -10, 1, -30); scroller.Position = UDim2.new(0, 5, 0, 25)
-    scroller.BackgroundTransparency = 1; scroller.AutomaticCanvasSize = 2; scroller.ScrollBarThickness = 0
-    local grid = Instance.new("UIGridLayout", scroller); grid.CellSize = UDim2.new(0, 95, 0, 25)
+    local gFrame = Instance.new("Frame", scroll)
+    gFrame.Size = UDim2.new(0.95, 0, 0, 110); gFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 30)
+    Instance.new("UICorner", gFrame)
+
+    local gScroll = Instance.new("ScrollingFrame", gFrame)
+    gScroll.Size = UDim2.new(1, -10, 1, -10); gScroll.Position = UDim2.new(0, 5, 0, 5)
+    gScroll.BackgroundTransparency = 1; gScroll.CanvasSize = UDim2.new(0,0,2,0); gScroll.ScrollBarThickness = 0
+    local grid = Instance.new("UIGridLayout", gScroll); grid.CellSize = UDim2.new(0, 92, 0, 25)
 
     for _, name in pairs(list) do
-        local opt = Instance.new("TextButton", scroller)
-        opt.Text = name; opt.Font = Enum.Font.Gotham; opt.TextSize = 10
-        opt.BackgroundColor3 = selection[name] and Color3.fromRGB(0, 120, 255) or Color3.fromRGB(40, 40, 50)
-        opt.TextColor3 = Color3.new(1,1,1); Instance.new("UICorner", opt)
-        
-        opt.MouseButton1Click:Connect(function()
-            if selection[name] then selection[name] = nil else selection[name] = true end
-            opt.BackgroundColor3 = selection[name] and Color3.fromRGB(0, 120, 255) or Color3.fromRGB(40, 40, 50)
-            saveConfig()
+        local b = Instance.new("TextButton", gScroll)
+        b.Text = name; b.Font = Enum.Font.Gotham; b.TextSize = 10; b.TextColor3 = Color3.new(1,1,1)
+        b.BackgroundColor3 = tab[name] and Color3.fromRGB(0, 120, 255) or Color3.fromRGB(45, 45, 55)
+        Instance.new("UICorner", b)
+        b.MouseButton1Click:Connect(function()
+            tab[name] = not tab[name] or nil
+            b.BackgroundColor3 = tab[name] and Color3.fromRGB(0, 120, 255) or Color3.fromRGB(45, 45, 55)
         end)
     end
 end
 
--- Init UI
+-- Setup Sections
 local crates = {"Heaven", "Music", "Cyber", "Steampunk", "Graffiti", "Vampiric", "Manga", "Samurai", "Royal", "Magma", "Hell", "Celestial", "Vortex", "Cursed"}
 local potions = {"Yen", "Lucky", "Mutation", "Super Yen", "Rich", "Clover", "Angelic", "Bank", "Greed"}
 
-createToggle("Auto Collect Money", "AutoCollect")
-createToggle("Anti-AFK", "AntiAFK")
-createToggle("Auto Equip Best", "EquipBest")
-createToggle("Enable Auto Crates", "Crates")
-createSelection("Crates", crates, selectedCrates)
-createToggle("Enable Auto Potions", "Potions")
-createSelection("Potions", potions, selectedPotions)
+makeToggle("Auto Collect Money", "AutoCollect")
+makeToggle("Anti-AFK", "AntiAFK")
+makeToggle("Auto Equip Best", "EquipBest")
+makeToggle("Enable Auto Crates", "Crates")
+makeGrid("Select Crates (Click to Select Multiple)", crates, selectedCrates)
+makeToggle("Enable Auto Potions", "Potions")
+makeGrid("Select Potions", potions, selectedPotions)
 
--- Simple Dragging
-local dragging, dragStart, startPos
-main.InputBegan:Connect(function(i) if i.UserInputType == Enum.UserInputType.MouseButton1 then dragging = true; dragStart = i.Position; startPos = main.Position end end)
-UserInputService.InputChanged:Connect(function(i) if dragging and i.UserInputType == Enum.UserInputType.MouseMovement then local delta = i.Position - dragStart; main.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y) end end)
-UserInputService.InputEnded:Connect(function(i) if i.UserInputType == Enum.UserInputType.MouseButton1 then dragging = false end end)
+-- Dragging
+local d, ds, sp
+main.InputBegan:Connect(function(i) if i.UserInputType == Enum.UserInputType.MouseButton1 then d = true; ds = i.Position; sp = main.Position end end)
+UserInputService.InputChanged:Connect(function(i) if d and i.UserInputType == Enum.UserInputType.MouseMovement then local delta = i.Position - ds; main.Position = UDim2.new(sp.X.Scale, sp.X.Offset + delta.X, sp.Y.Scale, sp.Y.Offset + delta.Y) end end)
+UserInputService.InputEnded:Connect(function(i) if i.UserInputType == Enum.UserInputType.MouseButton1 then d = false end end)
 
--- Anti-AFK Method
-player.Idled:Connect(function()
-    if toggles.AntiAFK then
-        game:GetService("VirtualUser"):Button2Down(Vector2.new(0,0), workspace.CurrentCamera.CFrame)
-        task.wait(1)
-        game:GetService("VirtualUser"):Button2Up(Vector2.new(0,0), workspace.CurrentCamera.CFrame)
-    end
-end)
-
-print("✅ Angelo Pogi Hub Loaded - Remote Collection Active")
+print("✅ Angelo Hub V4: Optimized & Selectable")
