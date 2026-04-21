@@ -4,29 +4,30 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local UserInputService = game:GetService("UserInputService")
 local HttpService = game:GetService("HttpService")
 
+-- Ensure Player and GUI are ready
 local player = Players.LocalPlayer
-local playerGui = player:WaitForChild("PlayerGui")
+local playerGui = player:WaitForChild("PlayerGui", 10)
+
+if not playerGui then
+    warn("❌ Critical Error: PlayerGui not found. Execution stopped.")
+    return
+end
 
 -- Variables
 local toggles = { AutoCollect = false, AntiAFK = false, Potions = false, Crates = false }
-local selectedCrates = {}
-local selectedPotions = {}
 
 -- ==========================================
 -- STABLE CORE LOGIC
 -- ==========================================
 
--- AUTO COLLECT (Uses direct remote fire to avoid physical UI lag)
 task.spawn(function()
     while true do
         if toggles.AutoCollect then
             pcall(function()
-                -- Direct Remote Fire (Most Stable)
                 local remotes = ReplicatedStorage:FindFirstChild("Events")
                 if remotes and remotes:FindFirstChild("Plot") and remotes.Plot:FindFirstChild("collectMoney") then
                     remotes.Plot.collectMoney:FireServer()
                 else
-                    -- Touch Fallback
                     local root = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
                     if root then
                         for _, v in pairs(workspace:GetDescendants()) do
@@ -44,61 +45,69 @@ task.spawn(function()
     end
 end)
 
--- ANTI-AFK (Engine Level)
-task.spawn(function()
-    local vu = game:GetService("VirtualUser")
-    player.Idled:Connect(function()
-        if toggles.AntiAFK then
-            vu:Button2Down(Vector2.new(0,0), workspace.CurrentCamera.CFrame)
-            task.wait(1)
-            vu:Button2Up(Vector2.new(0,0), workspace.CurrentCamera.CFrame)
-        end
-    end)
-end)
-
 -- ==========================================
--- MINIMALIST UI (Won't Break)
+-- FORCE INITIALIZE UI
 -- ==========================================
-if playerGui:FindFirstChild("AngeloFix") then playerGui.AngeloFix:Destroy() end
+local function CreateUI()
+    -- Remove old UI if it exists
+    if playerGui:FindFirstChild("AngeloFix") then playerGui.AngeloFix:Destroy() end
 
-local sg = Instance.new("ScreenGui", playerGui)
-sg.Name = "AngeloFix"
+    local sg = Instance.new("ScreenGui")
+    sg.Name = "AngeloFix"
+    sg.ResetOnSpawn = false -- Keeps UI visible after you die
+    sg.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+    sg.Parent = playerGui
 
-local frame = Instance.new("Frame", sg)
-frame.Size = UDim2.new(0, 200, 0, 250)
-frame.Position = UDim2.new(0.1, 0, 0.1, 0)
-frame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-frame.Active = true
-frame.Draggable = true -- Built-in draggable to save memory
+    local frame = Instance.new("Frame", sg)
+    frame.Size = UDim2.new(0, 220, 0, 280)
+    frame.Position = UDim2.new(0.5, -110, 0.4, -140)
+    frame.BackgroundColor3 = Color3.fromRGB(25, 25, 30)
+    frame.BorderSizePixel = 2
+    frame.BorderColor3 = Color3.fromRGB(0, 255, 150)
+    frame.Active = true
+    frame.Draggable = true -- Standard dragging for stability
 
-local layout = Instance.new("UIListLayout", frame)
-layout.Padding = UDim.new(0, 5)
+    local title = Instance.new("TextLabel", frame)
+    title.Size = UDim2.new(1, 0, 0, 30)
+    title.Text = "ANGELO POGI HUB"
+    title.TextColor3 = Color3.new(1, 1, 1)
+    title.BackgroundColor3 = Color3.fromRGB(40, 40, 45)
+    title.Font = Enum.Font.GothamBold
 
-local function quickBtn(txt, key)
-    local b = Instance.new("TextButton", frame)
-    b.Size = UDim2.new(1, 0, 0, 40)
-    b.Text = txt .. ": OFF"
-    b.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
-    b.TextColor3 = Color3.new(1,1,1)
-    
-    b.MouseButton1Click:Connect(function()
-        toggles[key] = not toggles[key]
-        b.Text = txt .. (toggles[key] and ": ON" or ": OFF")
-        b.BackgroundColor3 = toggles[key] and Color3.fromRGB(0, 120, 0) or Color3.fromRGB(50, 50, 50)
-    end)
+    local layout = Instance.new("UIListLayout", frame)
+    layout.Padding = UDim.new(0, 5)
+    layout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+
+    -- Simple Padding for the layout
+    local pad = Instance.new("Frame", frame)
+    pad.Size = UDim2.new(1,0,0,35); pad.BackgroundTransparency = 1
+
+    local function quickBtn(txt, key)
+        local b = Instance.new("TextButton", frame)
+        b.Size = UDim2.new(0.9, 0, 0, 40)
+        b.Text = txt .. ": OFF"
+        b.BackgroundColor3 = Color3.fromRGB(45, 45, 50)
+        b.TextColor3 = Color3.new(1, 1, 1)
+        b.Font = Enum.Font.Gotham
+        Instance.new("UICorner", b)
+        
+        b.MouseButton1Click:Connect(function()
+            toggles[key] = not toggles[key]
+            b.Text = txt .. (toggles[key] and ": ON" or ": OFF")
+            b.BackgroundColor3 = toggles[key] and Color3.fromRGB(0, 150, 80) or Color3.fromRGB(45, 45, 50)
+        end)
+    end
+
+    quickBtn("Auto Collect", "AutoCollect")
+    quickBtn("Anti-AFK", "AntiAFK")
+    quickBtn("Auto Potions", "Potions")
+    quickBtn("Auto Crates", "Crates")
+
+    print("✅ UI Successfully Created in PlayerGui")
 end
 
--- Create Buttons
-quickBtn("Auto Collect", "AutoCollect")
-quickBtn("Anti-AFK", "AntiAFK")
-quickBtn("Auto Potions", "Potions")
-quickBtn("Auto Crates", "Crates")
-
-local close = Instance.new("TextButton", frame)
-close.Size = UDim2.new(1, 0, 0, 20)
-close.Text = "CLOSE UI (Keep Running)"
-close.BackgroundColor3 = Color3.fromRGB(100, 0, 0)
-close.TextColor3 = Color3.new(1,1,1)
-close.MouseButton1Click:Connect(function() frame.Visible = false end)
-
-print("✅ Angelo Pogi Hub: Lite Version Loaded")
+-- Try to create the UI
+local success, err = pcall(CreateUI)
+if not success then
+    warn("❌ UI Creation Failed: " .. tostring(err))
+end
