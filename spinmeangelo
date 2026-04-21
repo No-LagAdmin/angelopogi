@@ -20,7 +20,7 @@ screenGui.IgnoreGuiInset = true
 screenGui.Parent = playerGui
 
 -- Logic Variables
-local toggles = { Crates = false, Potions = false, AntiAFK = false, EquipBest = false, AutoTouch = false }
+local toggles = { Crates = false, Potions = false, AntiAFK = false, EquipBest = false, AutoCollect = false }
 local selectedCrates = {}
 local selectedPotions = {}
 
@@ -36,7 +36,7 @@ local potionList = {
     "Rich", "Clover", "Angelic", "Bank", "Evil", "Fairy", "Greed"
 }
 
--- 1. MINIMIZE BUTTON (Angelo Bragado)
+-- 1. MINIMIZE BUTTON
 local minButton = Instance.new("TextButton")
 minButton.Name = "MinimizeUI"
 minButton.Size = UDim2.new(0, 150, 0, 45)
@@ -97,7 +97,6 @@ hideBtn.Font = Enum.Font.GothamBold
 hideBtn.TextSize = 22
 hideBtn.Parent = header
 
--- Main Scrolling Container
 local container = Instance.new("ScrollingFrame")
 container.Size = UDim2.new(1, -10, 1, -65)
 container.Position = UDim2.new(0, 5, 0, 60)
@@ -153,13 +152,7 @@ local function createDropdownMenu(titleText, list, selectionTable, toggleKey)
     listScroll.Position = UDim2.new(0, 10, 0, 55)
     listScroll.BackgroundColor3 = Color3.fromRGB(25, 25, 30)
     listScroll.BorderSizePixel = 0
-    listScroll.ScrollBarThickness = 4
-    listScroll.ScrollBarImageColor3 = Color3.fromRGB(0, 150, 255)
-    listScroll.CanvasSize = UDim2.new(0, 0, 0, 0)
-    listScroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
-    listScroll.ScrollingDirection = Enum.ScrollingDirection.Y
-    listScroll.Active = true
-    listScroll.ZIndex = 5
+    listScroll.Visible = false
     listScroll.Parent = outerFrame
     Instance.new("UICorner", listScroll).CornerRadius = UDim.new(0, 8)
 
@@ -175,7 +168,6 @@ local function createDropdownMenu(titleText, list, selectionTable, toggleKey)
         btn.TextColor3 = Color3.fromRGB(180, 180, 180)
         btn.Font = Enum.Font.Gotham
         btn.TextSize = 10
-        btn.ZIndex = 6
         btn.Parent = listScroll
         Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 5)
 
@@ -273,27 +265,29 @@ local function createSwitch(titleText, callback)
     end)
 end
 
--- Initialize Menus
+-- INITIALIZE ELEMENTS
 createDropdownMenu("Select Crates", crateList, selectedCrates, "Crates")
 createDropdownMenu("Select Potions", potionList, selectedPotions, "Potions")
 
--- NEW FEATURE: AUTO TOUCH SLOTS 1-12
-createSwitch("Auto Touch (1-12)", function(state)
-    toggles.AutoTouch = state
+-- THE NEW FEATURE: AUTO COLLECT MONEY
+createSwitch("Auto Collect Money", function(state)
+    toggles.AutoCollect = state
     if state then
         task.spawn(function()
-            while toggles.AutoTouch do
-                -- Loop Plots 1-12
+            while toggles.AutoCollect do
+                -- Logic for Plots 1-12
                 for p = 1, 12 do
                     local plot = workspace.Plots:FindFirstChild("Plot" .. p)
                     if plot then
-                        -- Loop Slots 1-12
+                        -- Logic for Slots 1-12
                         for s = 1, 12 do
                             task.spawn(function()
                                 local slot = plot.Slots:FindFirstChild(tostring(s))
                                 if slot and slot:FindFirstChild("Button") then
                                     local btn = slot.Button
                                     local root = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+                                    
+                                    -- Check for TouchInterest and simulation function
                                     if root and firetouchinterest then
                                         firetouchinterest(btn, root, 0)
                                         task.wait()
@@ -304,7 +298,7 @@ createSwitch("Auto Touch (1-12)", function(state)
                         end
                     end
                 end
-                task.wait(1) -- Execute the whole burst every 1 second
+                task.wait(1)
             end
         end)
     end
@@ -336,7 +330,7 @@ createSwitch("Auto Equip Best", function(state)
     end
 end)
 
--- MINIMIZE LOGIC
+-- UI LOGIC
 local function toggleUI()
     mainFrame.Visible = not mainFrame.Visible
     minButton.Visible = not mainFrame.Visible
@@ -345,7 +339,6 @@ end
 hideBtn.MouseButton1Click:Connect(toggleUI)
 minButton.MouseButton1Click:Connect(toggleUI)
 
--- DRAGGABLE (TOUCH & MOUSE)
 local function makeDraggable(obj)
     local dragging, dragStart, startPos
     obj.InputBegan:Connect(function(input)
@@ -367,4 +360,4 @@ end
 makeDraggable(mainFrame)
 makeDraggable(minButton)
 
-print("✅ Angelo Pogi Hub: Auto Touch Updated!")
+print("✅ Angelo Pogi Hub Loaded with Auto Collect Money!")
