@@ -74,7 +74,7 @@ Instance.new("UICorner", header)
 
 local title = Instance.new("TextLabel", header)
 title.Size = UDim2.new(1, 0, 1, 0); title.BackgroundTransparency = 1
-title.Text = "ANGELO FULL POWER"; title.TextColor3 = Color3.fromRGB(0, 255, 150)
+title.Text = "ANGELO HUB v6.7 (STRICT LAYOUT)"; title.TextColor3 = Color3.fromRGB(0, 255, 150)
 title.Font = Enum.Font.GothamBold; title.TextSize = 15
 
 local scroll = Instance.new("ScrollingFrame", main)
@@ -143,4 +143,4 @@ makeToggle("Anti-AFK System", "AntiAFK")
 makeSection("Crates", "Crates", crates, _G.selectedCrates)
 makeSection("Potions", "Potions", potions, _G.selectedPotions)
 
-print("✅ HAIL ANGELO FULL POWER.")
+print("✅ v6.7 Layout Fixed. Headers are now locked to the top of their sections.")
