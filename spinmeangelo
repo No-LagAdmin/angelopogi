@@ -1,19 +1,16 @@
 -- Services
 local Players = game:GetService("Players")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local UserInputService = game:GetService("UserInputService")
 
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
 
 -- Logic Variables
-local toggles = { AutoCollect = false, AntiAFK = false, Crates = false, Potions = false }
-local selectedCrates = {}
-local selectedPotions = {}
+local toggles = { AutoCollect = false, AntiAFK = false }
 local isMinimized = false
 
 -- ==========================================
--- THE FIX: SAFE-CHECK COLLECTION
+-- DEDICATED PLOT 1 COLLECTION (Slots 1-12)
 -- ==========================================
 task.spawn(function()
     while true do
@@ -22,28 +19,21 @@ task.spawn(function()
                 local char = player.Character
                 local root = char and char:FindFirstChild("HumanoidRootPart")
                 
-                -- Find your plot dynamically to avoid 'nil' errors
-                local myPlot = nil
-                for _, p in pairs(workspace.Plots:GetChildren()) do
-                    local owner = p:FindFirstChild("Owner") or p:FindFirstChild("Player")
-                    if owner and (tostring(owner.Value) == player.Name or owner.Value == player.UserId) then
-                        myPlot = p
-                        break
-                    end
-                end
-
-                if myPlot and root then
-                    local slots = myPlot:FindFirstChild("Slots")
+                -- Specifically targeting Workspace.Plots.Plot1
+                local targetPlot = workspace:FindFirstChild("Plots") and workspace.Plots:FindFirstChild("Plot1")
+                
+                if targetPlot and root then
+                    local slots = targetPlot:FindFirstChild("Slots")
                     if slots then
-                        -- Check slots 1-12 with a safety check for each
+                        -- Strictly Slot 1 to Slot 12
                         for i = 1, 12 do
                             local slot = slots:FindFirstChild(tostring(i))
                             local btn = slot and slot:FindFirstChild("Button")
                             
-                            -- Only fire if the button actually exists (prevents nil iteration)
+                            -- Safety check to ensure button exists before firing
                             if btn and btn:IsA("BasePart") then
                                 firetouchinterest(btn, root, 0)
-                                task.wait(0.02) -- Smallest safe delay
+                                task.wait(0.05) -- Safe delay to ensure registration
                                 firetouchinterest(btn, root, 1)
                             end
                         end
@@ -51,22 +41,22 @@ task.spawn(function()
                 end
             end)
         end
-        task.wait(1.5) -- Wait to prevent CoreScript Profiler overload
+        task.wait(5) -- Executes every 5 seconds as requested
     end
 end)
 
 -- ==========================================
--- UI DESIGN (BIGGER & ACCESSIBLE)
+-- UI DESIGN (LARGER & MINIMIZABLE)
 -- ==========================================
-if playerGui:FindFirstChild("AngeloSafeV4") then playerGui.AngeloSafeV4:Destroy() end
+if playerGui:FindFirstChild("AngeloPlot1Hub") then playerGui.AngeloPlot1Hub:Destroy() end
 
 local sg = Instance.new("ScreenGui", playerGui)
-sg.Name = "AngeloSafeV4"
+sg.Name = "AngeloPlot1Hub"
 sg.ResetOnSpawn = false
 
 local main = Instance.new("Frame", sg)
-main.Size = UDim2.new(0, 350, 0, 480)
-main.Position = UDim2.new(0.5, -175, 0.5, -240)
+main.Size = UDim2.new(0, 350, 0, 200)
+main.Position = UDim2.new(0.5, -175, 0.5, -100)
 main.BackgroundColor3 = Color3.fromRGB(15, 15, 20)
 main.BorderSizePixel = 0
 main.ClipsDescendants = true
@@ -78,7 +68,7 @@ Instance.new("UICorner", header)
 
 local title = Instance.new("TextLabel", header)
 title.Size = UDim2.new(1, -60, 1, 0); title.Position = UDim2.new(0, 15, 0, 0)
-title.Text = "ANGELO POGI HUB V4"; title.TextColor3 = Color3.fromRGB(0, 255, 150)
+title.Text = "ANGELO HUB: PLOT 1 ONLY"; title.TextColor3 = Color3.fromRGB(0, 255, 150)
 title.Font = Enum.Font.GothamBold; title.TextSize = 16; title.BackgroundTransparency = 1; title.TextXAlignment = 0
 
 local minBtn = Instance.new("TextButton", header)
@@ -86,14 +76,14 @@ minBtn.Size = UDim2.new(0, 40, 0, 40); minBtn.Position = UDim2.new(1, -45, 0, 5)
 minBtn.Text = "-"; minBtn.TextColor3 = Color3.new(1,1,1); minBtn.BackgroundColor3 = Color3.fromRGB(45, 45, 55)
 minBtn.Font = Enum.Font.GothamBold; Instance.new("UICorner", minBtn)
 
-local content = Instance.new("ScrollingFrame", main)
+local content = Instance.new("Frame", main)
 content.Size = UDim2.new(1, -20, 1, -60); content.Position = UDim2.new(0, 10, 0, 60)
-content.BackgroundTransparency = 1; content.ScrollBarThickness = 2; content.AutomaticCanvasSize = Enum.AutomaticSize.Y
-Instance.new("UIListLayout", content).Padding = UDim.new(0, 8)
+content.BackgroundTransparency = 1
+local layout = Instance.new("UIListLayout", content); layout.Padding = UDim.new(0, 10)
 
 local function createToggle(txt, key)
     local btn = Instance.new("TextButton", content)
-    btn.Size = UDim2.new(0.96, 0, 0, 40)
+    btn.Size = UDim2.new(1, 0, 0, 45)
     btn.BackgroundColor3 = toggles[key] and Color3.fromRGB(0, 150, 80) or Color3.fromRGB(35, 35, 45)
     btn.Text = txt; btn.TextColor3 = Color3.new(1,1,1); btn.Font = Enum.Font.Gotham
     Instance.new("UICorner", btn)
@@ -103,8 +93,8 @@ local function createToggle(txt, key)
     end)
 end
 
-createToggle("Auto Collect Money", "AutoCollect")
-createToggle("Anti-AFK", "AntiAFK")
+createToggle("Auto Collect (Plot 1 Only)", "AutoCollect")
+createToggle("Anti-AFK System", "AntiAFK")
 
 -- Dragging & Minimize Logic
 local dragging, dragStart, startPos
@@ -114,8 +104,8 @@ UserInputService.InputEnded:Connect(function(i) if i.UserInputType == Enum.UserI
 
 minBtn.MouseButton1Click:Connect(function()
     isMinimized = not isMinimized
-    main:TweenSize(isMinimized and UDim2.new(0, 350, 0, 50) or UDim2.new(0, 350, 0, 480), "Out", "Quart", 0.3, true)
+    main:TweenSize(isMinimized and UDim2.new(0, 350, 0, 50) or UDim2.new(0, 350, 0, 200), "Out", "Quart", 0.3, true)
     minBtn.Text = isMinimized and "+" or "-"
 end)
 
-print("✅ Angelo Hub V4 Safe Edition Loaded.")
+print("✅ Angelo Hub: Dedicated Plot 1 Loader Active")
