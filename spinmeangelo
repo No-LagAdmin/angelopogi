@@ -15,7 +15,7 @@ local filename = "AngeloPogiHub_Config.json"
 local toggles = { Crates = false, Potions = false, AntiAFK = false, EquipBest = false, AutoCollect = false }
 local selectedCrates = {}
 local selectedPotions = {}
-local waitingForReset = {} -- Tracks if a potion is waiting for 0 after hitting 4h
+local waitingForReset = {} 
 
 -- ==========================================
 -- CONFIGURATION SYSTEM
@@ -38,11 +38,21 @@ end
 
 loadConfig()
 
--- Potion Time Helper (Looks for internal game timers)
+-- NEW: Improved Potion Time Detection for "Spin a Anime"
 local function getPotionTime(potionName)
-    local data = player:FindFirstChild("Data") or player:FindFirstChild("leaderstats")
-    local potPath = data and (data:FindFirstChild(potionName) or data:FindFirstChild(potionName.."Time"))
-    if potPath and potPath:IsA("ValueBase") then return tonumber(potPath.Value) or 0 end
+    -- Check common data folders first
+    local dataFolder = player:FindFirstChild("Data") or player:FindFirstChild("leaderstats")
+    if dataFolder then
+        -- Check for a folder named "Potions" inside Data
+        local potionSubFolder = dataFolder:FindFirstChild("Potions")
+        local target = (potionSubFolder and potionSubFolder:FindFirstChild(potionName)) or dataFolder:FindFirstChild(potionName)
+        
+        if target and target:IsA("ValueBase") then
+            return tonumber(target.Value) or 0
+        end
+    end
+    
+    -- Fallback to Attributes
     local attr = player:GetAttribute(potionName) or player:GetAttribute(potionName.."Time")
     return tonumber(attr) or 0
 end
@@ -51,9 +61,9 @@ end
 -- MAIN AUTOMATION LOOPS
 -- ==========================================
 
--- AUTO POTION (4H Cap -> Wait for 0)
+-- AUTO POTION (Fixed 4H Cap Logic)
 task.spawn(function()
-    local MAX_TIME = 14400 -- 4 Hours
+    local MAX_TIME = 14400 -- 4 Hours in seconds
     while true do
         if toggles.Potions then
             for item, _ in pairs(selectedPotions) do
@@ -61,6 +71,7 @@ task.spawn(function()
                 
                 local currentTime = getPotionTime(item)
                 
+                -- Maintenance logic: Stop at 4h, Restart at 0
                 if currentTime >= MAX_TIME then
                     waitingForReset[item] = true
                 elseif currentTime <= 0 then
@@ -68,12 +79,46 @@ task.spawn(function()
                 end
                 
                 if not waitingForReset[item] then
-                    pcall(function() ReplicatedStorage.Events.Potion.purchase:FireServer(item, 1) end)
-                    task.wait(0.5)
+                    pcall(function() 
+                        ReplicatedStorage.Events.Potion.purchase:FireServer(item, 1) 
+                    end)
+                    task.wait(0.5) 
                 end
             end
         end
         task.wait(1)
+    end
+end)
+
+-- AUTO COLLECT (FIXED: 2s Delay & No Task Spawning to prevent crashing)
+task.spawn(function()
+    while true do
+        if toggles.AutoCollect then
+            local character = player.Character
+            local root = character and character:FindFirstChild("HumanoidRootPart")
+            
+            if root then
+                local plots = workspace:FindFirstChild("Plots")
+                if plots then
+                    for p = 1, 12 do
+                        if not toggles.AutoCollect then break end
+                        local plot = plots:FindFirstChild("Plot" .. p)
+                        if plot and plot:FindFirstChild("Slots") then
+                            for s = 1, 12 do
+                                local slot = plot.Slots:FindFirstChild(tostring(s))
+                                local button = slot and slot:FindFirstChild("Button")
+                                if button and firetouchinterest then
+                                    firetouchinterest(button, root, 0)
+                                    task.wait(0.05) -- Tiny safety gap
+                                    firetouchinterest(button, root, 1)
+                                end
+                            end
+                        end
+                    end
+                end
+            end
+        end
+        task.wait(2) -- Slowed down to 2 seconds as requested
     end
 end)
 
@@ -91,37 +136,8 @@ task.spawn(function()
     end
 end)
 
--- AUTO COLLECT (FIXED: Sequential processing to prevent crashing)
-task.spawn(function()
-    while true do
-        if toggles.AutoCollect then
-            local character = player.Character
-            local root = character and character:FindFirstChild("HumanoidRootPart")
-            
-            if root then
-                for p = 1, 12 do
-                    if not toggles.AutoCollect then break end
-                    local plot = workspace.Plots:FindFirstChild("Plot" .. p)
-                    if plot then
-                        for s = 1, 12 do
-                            local slot = plot.Slots:FindFirstChild(tostring(s))
-                            local button = slot and slot:FindFirstChild("Button")
-                            if button and firetouchinterest then
-                                firetouchinterest(button, root, 0)
-                                task.wait()
-                                firetouchinterest(button, root, 1)
-                            end
-                        end
-                    end
-                end
-            end
-        end
-        task.wait(2) -- Increased to 2s to prevent lag/crashing
-    end
-end)
-
 -- ==========================================
--- UI ELEMENTS & INITIALIZATION
+-- UI CONSTRUCTION (FIXED)
 -- ==========================================
 if playerGui:FindFirstChild("AngeloPogiHub") then playerGui:FindFirstChild("AngeloPogiHub"):Destroy() end
 
@@ -130,35 +146,37 @@ screenGui.Name = "AngeloPogiHub"
 screenGui.ResetOnSpawn = false
 screenGui.Parent = playerGui
 
-local crateList = {"Heaven", "Music", "Cyber", "Steampunk", "Graffiti", "Vampiric", "Construction", "Manga", "Samurai", "Royal", "Magma", "Porcelain", "Hell", "Ghost", "Abandoned", "Haunted", "Celestial", "Red Moon", "Vortex", "Cursed", "Devilous"}
-local potionList = {"Yen", "Lucky", "Mutation", "Super Yen", "Super Lucky", "Rich", "Clover", "Angelic", "Bank", "Evil", "Fairy", "Greed"}
-
 local mainFrame = Instance.new("Frame")
 mainFrame.Size = UDim2.new(0, 340, 0, 400)
 mainFrame.Position = UDim2.new(0.5, -170, 0.5, -200)
 mainFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 25)
+mainFrame.BorderSizePixel = 0
+mainFrame.Active = true
 mainFrame.Parent = screenGui
-Instance.new("UICorner", mainFrame)
+Instance.new("UICorner", mainFrame).CornerRadius = UDim.new(0, 12)
 
+-- Header
+local header = Instance.new("Frame")
+header.Size = UDim2.new(1, 0, 0, 55)
+header.BackgroundColor3 = Color3.fromRGB(35, 35, 45)
+header.Parent = mainFrame
+Instance.new("UICorner", header).CornerRadius = UDim.new(0, 12)
+
+local title = Instance.new("TextLabel")
+title.Size = UDim2.new(1, 0, 1, 0); title.Text = "  ANGELO POGI HUB"; title.TextColor3 = Color3.new(1,1,1); title.Font = Enum.Font.GothamBold; title.BackgroundTransparency = 1; title.TextXAlignment = Enum.TextXAlignment.Left; title.Parent = header
+
+-- Scroll Container
 local container = Instance.new("ScrollingFrame")
 container.Size = UDim2.new(1, -10, 1, -65)
 container.Position = UDim2.new(0, 5, 0, 60)
 container.BackgroundTransparency = 1
+container.BorderSizePixel = 0
 container.AutomaticCanvasSize = Enum.AutomaticSize.Y
 container.ScrollBarThickness = 2
 container.Parent = mainFrame
 Instance.new("UIListLayout", container).Padding = UDim.new(0, 10)
 
-local header = Instance.new("Frame")
-header.Size = UDim2.new(1, 0, 0, 55)
-header.BackgroundColor3 = Color3.fromRGB(35, 35, 45)
-header.Parent = mainFrame
-Instance.new("UICorner", header)
-
-local title = Instance.new("TextLabel")
-title.Size = UDim2.new(1, 0, 1, 0); title.Text = "  ANGELO POGI HUB"; title.TextColor3 = Color3.new(1,1,1); title.Font = Enum.Font.GothamBold; title.BackgroundTransparency = 1; title.TextXAlignment = Enum.TextXAlignment.Left; title.Parent = header
-
--- Dropdown Builder
+-- Functions
 local function createDropdownMenu(titleText, list, selectionTable, toggleKey)
     local outerFrame = Instance.new("Frame")
     outerFrame.Size = UDim2.new(0.95, 0, 0, 50); outerFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 35); outerFrame.ClipsDescendants = true; outerFrame.Parent = container
@@ -199,7 +217,6 @@ local function createDropdownMenu(titleText, list, selectionTable, toggleKey)
     end)
 end
 
--- Switch Builder
 local function createSwitch(titleText, toggleKey, callback)
     local row = Instance.new("Frame")
     row.Size = UDim2.new(0.95, 0, 0, 50); row.BackgroundColor3 = Color3.fromRGB(30, 30, 35); row.Parent = container
@@ -221,10 +238,13 @@ local function createSwitch(titleText, toggleKey, callback)
     if toggles[toggleKey] and callback then task.spawn(function() callback(true) end) end
 end
 
--- Initialize Components
+-- Initialize
+local crateList = {"Heaven", "Music", "Cyber", "Steampunk", "Graffiti", "Vampiric", "Construction", "Manga", "Samurai", "Royal", "Magma", "Porcelain", "Hell", "Ghost", "Abandoned", "Haunted", "Celestial", "Red Moon", "Vortex", "Cursed", "Devilous"}
+local potionList = {"Yen", "Lucky", "Mutation", "Super Yen", "Super Lucky", "Rich", "Clover", "Angelic", "Bank", "Evil", "Fairy", "Greed"}
+
 createDropdownMenu("Select Crates", crateList, selectedCrates, "Crates")
 createDropdownMenu("Select Potions", potionList, selectedPotions, "Potions")
-createSwitch("Auto Collect Money", "AutoCollect") -- Loop handled in separate thread
+createSwitch("Auto Collect Money", "AutoCollect")
 createSwitch("Anti-AFK", "AntiAFK", function(state)
     local VU = game:GetService("VirtualUser")
     while toggles.AntiAFK do VU:CaptureController(); VU:ClickButton2(Vector2.new()); task.wait(30) end
@@ -233,7 +253,7 @@ createSwitch("Auto Equip Best", "EquipBest", function(state)
     while toggles.EquipBest do pcall(function() ReplicatedStorage.Events.Plot.equipBest:InvokeServer() end); task.wait(30) end
 end)
 
--- Draggable Logic
+-- Draggable
 local function makeDraggable(obj)
     local dragging, dragStart, startPos
     obj.InputBegan:Connect(function(input) if input.UserInputType == Enum.UserInputType.MouseButton1 then dragging = true; dragStart = input.Position; startPos = obj.Position end end)
@@ -242,4 +262,4 @@ local function makeDraggable(obj)
 end
 makeDraggable(mainFrame)
 
-print("✅ Welcome Motherfucker - Hub Loaded")
+print("✅ Welcome Motherfucker - Optimized Hub Loaded")
