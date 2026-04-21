@@ -5,35 +5,33 @@ local UserInputService = game:GetService("UserInputService")
 local HttpService = game:GetService("HttpService")
 
 local player = Players.LocalPlayer
--- Using FindFirstChild to prevent infinite yield/freeze
-local playerGui = player:FindFirstChild("PlayerGui") or player:WaitForChild("PlayerGui", 5)
+local playerGui = player:FindFirstChild("PlayerGui") or player:WaitForChild("PlayerGui", 10)
 
--- Config System (Safely Wrapped)
+-- Config System
+_G.toggles = { AutoCollect = false, AntiAFK = false, Crates = false, Potions = false, EquipBest = false }
+_G.selectedCrates = {}
+_G.selectedPotions = {}
+
 local fileName = "AngeloFullPowerConfig.json"
 local function saveConfig()
     local data = {toggles = _G.toggles, crates = _G.selectedCrates, potions = _G.selectedPotions}
-    pcall(function() writefile(fileName, HttpService:JSONEncode(data)) end)
+    pcall(function() if writefile then writefile(fileName, HttpService:JSONEncode(data)) end end)
 end
 
 local function loadConfig()
-    _G.toggles = { AutoCollect = false, AntiAFK = false, Crates = false, Potions = false, EquipBest = false }
-    _G.selectedCrates = {}
-    _G.selectedPotions = {}
-    
-    if isfile and isfile(fileName) then
-        local success, data = pcall(function() return HttpService:JSONDecode(readfile(fileName)) end)
-        if success then
-            for k,v in pairs(data.toggles or {}) do _G.toggles[k] = v end
+    pcall(function()
+        if isfile and isfile(fileName) then
+            local data = HttpService:JSONDecode(readfile(fileName))
+            for k, v in pairs(data.toggles or {}) do _G.toggles[k] = v end
             _G.selectedCrates = data.crates or {}
             _G.selectedPotions = data.potions or {}
         end
-    end
+    end)
 end
-
 loadConfig()
 
 -- ==========================================
--- BACKEND LOOPS
+-- BACKEND LOGIC (Fixed & Silent)
 -- ==========================================
 
 task.spawn(function()
@@ -71,14 +69,12 @@ task.spawn(function()
 end)
 
 -- ==========================================
--- UI FORCE-LOAD (The Fix)
+-- UI REBUILD (Fixed Scrolling & Layout)
 -- ==========================================
-if not playerGui then warn("❌ FATAL: PlayerGui not found. Execution stopped.") return end
 if playerGui:FindFirstChild("AngeloFinalHub") then playerGui.AngeloFinalHub:Destroy() end
 
-local sg = Instance.new("ScreenGui")
+local sg = Instance.new("ScreenGui", playerGui)
 sg.Name = "AngeloFinalHub"
-sg.Parent = playerGui
 sg.ResetOnSpawn = false
 
 local main = Instance.new("Frame", sg)
@@ -99,16 +95,23 @@ title.Text = "ANGELO FULL POWER SPECIAL EDITION"
 title.TextColor3 = Color3.fromRGB(0, 255, 150)
 title.Font = Enum.Font.GothamBold; title.TextSize = 14; title.BackgroundTransparency = 1
 
+-- FIXED SCROLLING
 local scroll = Instance.new("ScrollingFrame", main)
-scroll.Size = UDim2.new(1, -20, 1, -60); scroll.Position = UDim2.new(0, 10, 0, 60)
-scroll.BackgroundTransparency = 1; scroll.ScrollBarThickness = 2; scroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
-Instance.new("UIListLayout", scroll).Padding = UDim.new(0, 8)
+scroll.Size = UDim2.new(1, -20, 1, -60)
+scroll.Position = UDim2.new(0, 10, 0, 60)
+scroll.BackgroundTransparency = 1
+scroll.ScrollBarThickness = 3
+scroll.ScrollBarImageColor3 = Color3.fromRGB(0, 255, 150)
+scroll.AutomaticCanvasSize = Enum.AutomaticSize.Y -- Allows infinite downward space
+local layout = Instance.new("UIListLayout", scroll)
+layout.Padding = UDim.new(0, 10)
+layout.HorizontalAlignment = Enum.HorizontalAlignment.Center
 
 local function makeToggle(txt, key)
     local btn = Instance.new("TextButton", scroll)
-    btn.Size = UDim2.new(0.96, 0, 0, 42)
+    btn.Size = UDim2.new(0.95, 0, 0, 45)
     btn.BackgroundColor3 = _G.toggles[key] and Color3.fromRGB(0, 150, 80) or Color3.fromRGB(35, 35, 45)
-    btn.Text = txt; btn.TextColor3 = Color3.new(1,1,1); btn.Font = Enum.Font.Gotham
+    btn.Text = txt; btn.TextColor3 = Color3.new(1,1,1); btn.Font = Enum.Font.Gotham; btn.TextSize = 13
     Instance.new("UICorner", btn)
     btn.MouseButton1Click:Connect(function()
         _G.toggles[key] = not _G.toggles[key]
@@ -117,15 +120,52 @@ local function makeToggle(txt, key)
     end)
 end
 
--- UI Sections
+local function makeMenu(titleTxt, items, targetTable)
+    local label = Instance.new("TextLabel", scroll)
+    label.Size = UDim2.new(1, 0, 0, 25); label.Text = titleTxt; label.TextColor3 = Color3.fromRGB(150, 150, 150)
+    label.BackgroundTransparency = 1; label.Font = Enum.Font.GothamBold; label.TextSize = 12
+
+    local gridFrame = Instance.new("Frame", scroll)
+    gridFrame.Size = UDim2.new(0.95, 0, 0, 150) -- Fixed height for grid
+    gridFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 30)
+    Instance.new("UICorner", gridFrame)
+    
+    local gScroll = Instance.new("ScrollingFrame", gridFrame)
+    gScroll.Size = UDim2.new(1, -10, 1, -10); gScroll.Position = UDim2.new(0, 5, 0, 5)
+    gScroll.BackgroundTransparency = 1; gScroll.CanvasSize = UDim2.new(0,0,3,0); gScroll.ScrollBarThickness = 2
+    local gLayout = Instance.new("UIGridLayout", gScroll)
+    gLayout.CellSize = UDim2.new(0, 100, 0, 30); gLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+
+    for _, name in pairs(items) do
+        local b = Instance.new("TextButton", gScroll)
+        b.Text = name; b.TextSize = 10; b.TextColor3 = Color3.new(1,1,1)
+        b.BackgroundColor3 = targetTable[name] and Color3.fromRGB(0, 120, 255) or Color3.fromRGB(45, 45, 55)
+        Instance.new("UICorner", b)
+        b.MouseButton1Click:Connect(function()
+            targetTable[name] = not targetTable[name]
+            b.BackgroundColor3 = targetTable[name] and Color3.fromRGB(0, 120, 255) or Color3.fromRGB(45, 45, 55)
+            saveConfig()
+        end)
+    end
+end
+
+-- DATA
+local crates = {"Hell", "Heaven", "Music", "Cyber", "Steampunk", "Graffiti", "Vampiric", "Construction", "Manga", "Samurai", "Royal", "Magma", "Ghost", "Abandoned", "Haunted", "Celestial", "Red Moon", "Vortex", "Cursed", "Devilous"}
+local potions = {"Yen", "Lucky", "Mutation", "Super Yen", "Rich", "Clover", "Angelic", "Bank", "Greed"}
+
+-- GENERATE UI
 makeToggle("Auto Collect Yen (Slots 1-12)", "AutoCollect")
 makeToggle("Auto Equip Best (25s)", "EquipBest")
 makeToggle("Anti-AFK System", "AntiAFK")
+makeToggle("Enable Auto Buy Crates", "Crates")
+makeMenu("SELECT CRATES", crates, _G.selectedCrates)
+makeToggle("Enable Auto Use Potions", "Potions")
+makeMenu("SELECT POTIONS", potions, _G.selectedPotions)
 
--- Dragging Logic
+-- Dragging
 local dragging, dragStart, startPos
 header.InputBegan:Connect(function(i) if i.UserInputType == Enum.UserInputType.MouseButton1 then dragging = true; dragStart = i.Position; startPos = main.Position end end)
 UserInputService.InputChanged:Connect(function(i) if dragging and i.UserInputType == Enum.UserInputType.MouseMovement then local delta = i.Position - dragStart; main.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y) end end)
 UserInputService.InputEnded:Connect(function(i) if i.UserInputType == Enum.UserInputType.MouseButton1 then dragging = false end end)
 
-print("✅ Angelo Final Hub v5.6 Loaded Successfully.")
+print("✅ Angelo Final Hub v5.7 (UI Overflow Fix) Ready.")
