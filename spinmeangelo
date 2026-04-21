@@ -36,50 +36,56 @@ _G.selectedPotions = {}
 loadConfig()
 
 -- ==========================================
--- BACKEND LOGIC LOOPS
+-- CORRECTED LOGIC MODULES
 -- ==========================================
 
--- AUTO EQUIP BEST (Every 25 Seconds)
+-- AUTO EQUIP BEST (Every 25s - RemoteFunction Fix)
 task.spawn(function()
     while true do
         if _G.toggles.EquipBest then
             pcall(function()
-                ReplicatedStorage.Events.Plot.equipBest:FireServer()
+                local remote = ReplicatedStorage:WaitForChild("Events"):WaitForChild("Plot"):WaitForChild("equipBest")
+                if remote:IsA("RemoteFunction") then
+                    remote:InvokeServer()
+                else
+                    remote:FireServer()
+                end
             end)
         end
         task.wait(25)
     end
 end)
 
--- AUTO COLLECT YEN (Deep-Scan Mode)
+-- CORRECTED AUTO COLLECT YEN (Strict Slot 1-12)
 task.spawn(function()
     while true do
         if _G.toggles.AutoCollect then
             pcall(function()
                 local char = player.Character
                 local root = char and char:FindFirstChild("HumanoidRootPart")
-                local plot1 = workspace:FindFirstChild("Plots") and workspace.Plots:FindFirstChild("Plot1")
+                local plots = workspace:FindFirstChild("Plots")
+                local plot1 = plots and plots:FindFirstChild("Plot1")
                 
                 if plot1 and root then
                     local slots = plot1:FindFirstChild("Slots")
                     if slots then
                         for i = 1, 12 do
+                            -- Strict Pathing based on your input
                             local slot = slots:FindFirstChild(tostring(i))
-                            if slot then
-                                for _, part in pairs(slot:GetDescendants()) do
-                                    if part:IsA("BasePart") and part:FindFirstChildOfClass("TouchInterest") then
-                                        firetouchinterest(part, root, 0)
-                                        task.wait(0.02)
-                                        firetouchinterest(part, root, 1)
-                                    end
-                                end
+                            local button = slot and slot:FindFirstChild("Button")
+                            local touch = button and button:FindFirstChild("TouchInterest")
+                            
+                            if touch then
+                                firetouchinterest(button, root, 0)
+                                task.wait(0.02)
+                                firetouchinterest(button, root, 1)
                             end
                         end
                     end
                 end
             end)
         end
-        task.wait(5) -- 5-second interval
+        task.wait(5) 
     end
 end)
 
@@ -103,7 +109,7 @@ task.spawn(function()
 end)
 
 -- ==========================================
--- UI DESIGN (FINAL v5.3)
+-- UI DESIGN
 -- ==========================================
 if playerGui:FindFirstChild("AngeloFinalHub") then playerGui.AngeloFinalHub:Destroy() end
 
@@ -181,9 +187,8 @@ end
 local crates = {"Hell", "Heaven", "Music", "Cyber", "Steampunk", "Graffiti", "Vampiric", "Construction", "Manga", "Samurai", "Royal", "Magma", "Ghost", "Abandoned", "Haunted", "Celestial", "Red Moon", "Vortex", "Cursed", "Devilous"}
 local potions = {"Yen", "Lucky", "Mutation", "Super Yen", "Rich", "Clover", "Angelic", "Bank", "Greed"}
 
--- UI Buttons
-makeToggle("Auto Collect Yen (Plot 1 Only)", "AutoCollect")
-makeToggle("Auto Equip Best (Every 25s)", "EquipBest")
+makeToggle("Auto Collect Yen (Plot 1 | Slots 1-12)", "AutoCollect")
+makeToggle("Auto Equip Best (Invoke Server)", "EquipBest")
 makeToggle("Anti-AFK System", "AntiAFK")
 makeToggle("Enable Auto Buy Crates", "Crates")
 makeGrid("Select Crates", crates, _G.selectedCrates)
@@ -213,4 +218,4 @@ player.Idled:Connect(function()
     end
 end)
 
-print("✅ Angelo Final Hub v5.3 (Equip Best Added) Loaded.")
+print("✅ Angelo Final Hub v5.4 (Strict Pathing & Invoke Fix) Loaded.")
