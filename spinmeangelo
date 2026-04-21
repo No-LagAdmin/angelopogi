@@ -15,7 +15,6 @@ _G.selectedCrates = {}
 _G.selectedPotions = {}
 
 local fileName = "AngeloHub_Config.json"
-
 local function saveConfig()
     local data = {toggles = _G.toggles, crates = _G.selectedCrates, potions = _G.selectedPotions}
     pcall(function() writefile(fileName, HttpService:JSONEncode(data)) end)
@@ -33,7 +32,6 @@ local function loadConfig()
 end
 loadConfig()
 
--- Cleanup
 for _, oldUI in pairs(CoreGui:GetChildren()) do
     if oldUI.Name == "AngeloFinalHub" then oldUI:Destroy() end
 end
@@ -43,25 +41,68 @@ end
 -- ==========================================
 
 task.spawn(function()
+    while task.wait(5) do
+        if _G.toggles.EquipBest then
+            pcall(function()
+                local remote = ReplicatedStorage:FindFirstChild("equipBest", true) or 
+                               ReplicatedStorage:FindFirstChild("EquipBest", true)
+                if remote then
+                    if remote:IsA("RemoteFunction") then remote:InvokeServer() else remote:FireServer() end
+                end
+            end)
+        end
+    end
+end)
+
+task.spawn(function()
+    while task.wait(1) do
+        if _G.toggles.AutoCollect then
+            pcall(function()
+                local root = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+                if root then
+                    for _, v in pairs(workspace:GetDescendants()) do
+                        if v.Name == "Button" and v:IsA("BasePart") and v.Parent.Name:match("%d") then
+                            local dist = (root.Position - v.Position).Magnitude
+                            if dist < 50 then
+                                firetouchinterest(v, root, 0)
+                                task.wait()
+                                firetouchinterest(v, root, 1)
+                            end
+                        end
+                    end
+                end
+            end)
+        end
+    end
+end)
+
+task.spawn(function()
     while task.wait(1.5) do
         if _G.toggles.Crates then
             for crate, state in pairs(_G.selectedCrates) do
-                if state then ReplicatedStorage.Events.Crate.purchase:FireServer(crate, 1) task.wait(0.1) end
+                if state then 
+                    local r = ReplicatedStorage:FindFirstChild("purchase", true)
+                    if r then r:FireServer(crate, 1) end
+                    task.wait(0.1) 
+                end
             end
         end
         if _G.toggles.Potions then
             for pot, state in pairs(_G.selectedPotions) do
-                if state then ReplicatedStorage.Events.Potion.purchase:FireServer(pot, 1) task.wait(0.1) end
+                if state then 
+                    local r = ReplicatedStorage:FindFirstChild("use", true) or ReplicatedStorage:FindFirstChild("purchase", true)
+                    if r then r:FireServer(pot, 1) end
+                    task.wait(0.1) 
+                end
             end
         end
     end
 end)
 
 -- ==========================================
--- UI CONSTRUCTION (FIXED HEADER POSITIONING)
+-- UI CONSTRUCTION
 -- ==========================================
-local sg = Instance.new("ScreenGui", CoreGui)
-sg.Name = "AngeloFinalHub"; sg.DisplayOrder = 999
+local sg = Instance.new("ScreenGui", CoreGui); sg.Name = "AngeloFinalHub"
 
 local main = Instance.new("Frame", sg)
 main.Size = UDim2.new(0, 380, 0, 520); main.Position = UDim2.new(0.5, -190, 0.5, -260)
@@ -69,26 +110,23 @@ main.BackgroundColor3 = Color3.fromRGB(12, 12, 18); main.Active = true; main.Dra
 Instance.new("UICorner", main)
 
 local header = Instance.new("Frame", main)
-header.Size = UDim2.new(1, 0, 0, 45); header.BackgroundColor3 = Color3.fromRGB(22, 22, 30)
-Instance.new("UICorner", header)
+header.Size = UDim2.new(1, 0, 0, 45); header.BackgroundColor3 = Color3.fromRGB(22, 22, 30); Instance.new("UICorner", header)
 
 local title = Instance.new("TextLabel", header)
 title.Size = UDim2.new(1, 0, 1, 0); title.BackgroundTransparency = 1
-title.Text = "ANGELO HUB v6.7 (STRICT LAYOUT)"; title.TextColor3 = Color3.fromRGB(0, 255, 150)
+title.Text = "ANGELO HUB v6.9 (NEW POTIONS)"; title.TextColor3 = Color3.fromRGB(0, 255, 150)
 title.Font = Enum.Font.GothamBold; title.TextSize = 15
 
 local scroll = Instance.new("ScrollingFrame", main)
 scroll.Size = UDim2.new(1, -10, 1, -55); scroll.Position = UDim2.new(0, 5, 0, 50)
-scroll.BackgroundTransparency = 1; scroll.ScrollBarThickness = 3
-scroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
+scroll.BackgroundTransparency = 1; scroll.ScrollBarThickness = 3; scroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
 local list = Instance.new("UIListLayout", scroll); list.Padding = UDim.new(0, 15); list.HorizontalAlignment = Enum.HorizontalAlignment.Center
 
 local function makeToggle(txt, key, parent)
     local btn = Instance.new("TextButton", parent or scroll)
     btn.Size = UDim2.new(0.94, 0, 0, 40)
     btn.BackgroundColor3 = _G.toggles[key] and Color3.fromRGB(0, 180, 90) or Color3.fromRGB(30, 30, 40)
-    btn.Text = txt; btn.TextColor3 = Color3.new(1,1,1); btn.Font = Enum.Font.Gotham
-    Instance.new("UICorner", btn)
+    btn.Text = txt; btn.TextColor3 = Color3.new(1,1,1); btn.Font = Enum.Font.Gotham; Instance.new("UICorner", btn)
     btn.MouseButton1Click:Connect(function()
         _G.toggles[key] = not _G.toggles[key]
         btn.BackgroundColor3 = _G.toggles[key] and Color3.fromRGB(0, 180, 90) or Color3.fromRGB(30, 30, 40)
@@ -101,15 +139,12 @@ local function makeSection(titleTxt, toggleKey, items, targetTable)
     sectionContainer.Size = UDim2.new(0.94, 0, 0, 240); sectionContainer.BackgroundTransparency = 1
     local sList = Instance.new("UIListLayout", sectionContainer); sList.Padding = UDim.new(0, 8); sList.HorizontalAlignment = Enum.HorizontalAlignment.Center
 
-    -- 1. HEADER (STRICTLY ON TOP)
     local titleLab = Instance.new("TextLabel", sectionContainer)
     titleLab.Size = UDim2.new(1, 0, 0, 25); titleLab.Text = "--- SELECT " .. titleTxt:upper() .. " ---"
     titleLab.TextColor3 = Color3.fromRGB(0, 255, 150); titleLab.BackgroundTransparency = 1; titleLab.Font = Enum.Font.GothamBold; titleLab.TextSize = 13
 
-    -- 2. SELECTION GRID (MIDDLE)
     local gridFrame = Instance.new("Frame", sectionContainer)
-    gridFrame.Size = UDim2.new(1, 0, 0, 150); gridFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 28)
-    Instance.new("UICorner", gridFrame)
+    gridFrame.Size = UDim2.new(1, 0, 0, 150); gridFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 28); Instance.new("UICorner", gridFrame)
 
     local iScroll = Instance.new("ScrollingFrame", gridFrame)
     iScroll.Size = UDim2.new(1, -10, 1, -10); iScroll.Position = UDim2.new(0, 5, 0, 5); iScroll.BackgroundTransparency = 1; iScroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
@@ -118,29 +153,25 @@ local function makeSection(titleTxt, toggleKey, items, targetTable)
     for _, name in pairs(items) do
         local b = Instance.new("TextButton", iScroll)
         b.Text = name; b.TextSize = 10; b.TextColor3 = Color3.new(1,1,1)
-        b.BackgroundColor3 = targetTable[name] and Color3.fromRGB(0, 120, 255) or Color3.fromRGB(40, 40, 50)
-        Instance.new("UICorner", b)
+        b.BackgroundColor3 = targetTable[name] and Color3.fromRGB(0, 120, 255) or Color3.fromRGB(40, 40, 50); Instance.new("UICorner", b)
         b.MouseButton1Click:Connect(function()
             targetTable[name] = not targetTable[name]
             b.BackgroundColor3 = targetTable[name] and Color3.fromRGB(0, 120, 255) or Color3.fromRGB(40, 40, 50)
             saveConfig()
         end)
     end
-
-    -- 3. ENABLE TOGGLE (BOTTOM OF SECTION)
     makeToggle("Enable Auto " .. titleTxt, toggleKey, sectionContainer)
 end
 
 -- Data
 local crates = {"Hell", "Heaven", "Music", "Cyber", "Steampunk", "Graffiti", "Vampiric", "Construction", "Manga", "Samurai", "Royal", "Magma", "Ghost", "Abandoned", "Haunted", "Celestial", "Red Moon", "Vortex", "Cursed", "Devilous"}
-local potions = {"Yen", "Lucky", "Mutation", "Super Yen", "Rich", "Clover", "Angelic", "Bank", "Greed"}
+local potions = {"Yen", "Lucky", "Mutation", "Super Yen", "Rich", "Clover", "Angelic", "Bank", "Greed", "Super Lucky", "Evil", "Fairy"}
 
 -- Final Build
-makeToggle("Auto Collect Yen (Plot 1)", "AutoCollect")
-makeToggle("Auto Equip Best (25s)", "EquipBest")
+makeToggle("Auto Collect Yen", "AutoCollect")
+makeToggle("Auto Equip Best", "EquipBest")
 makeToggle("Anti-AFK System", "AntiAFK")
-
 makeSection("Crates", "Crates", crates, _G.selectedCrates)
 makeSection("Potions", "Potions", potions, _G.selectedPotions)
 
-print("✅ v6.7 Layout Fixed. Headers are now locked to the top of their sections.")
+print("✅ v6.9 Loaded. Added Super Lucky, Evil, and Fairy to Potions.")
