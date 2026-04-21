@@ -20,7 +20,7 @@ screenGui.IgnoreGuiInset = true
 screenGui.Parent = playerGui
 
 -- Logic Variables
-local toggles = { Crates = false, Potions = false, AntiAFK = false, EquipBest = false }
+local toggles = { Crates = false, Potions = false, AntiAFK = false, EquipBest = false, AutoTouch = false }
 local selectedCrates = {}
 local selectedPotions = {}
 
@@ -148,7 +148,6 @@ local function createDropdownMenu(titleText, list, selectionTable, toggleKey)
     knob.Parent = track
     Instance.new("UICorner", knob).CornerRadius = UDim.new(1, 0)
 
-    -- THE INNER SCROLLABLE LIST
     local listScroll = Instance.new("ScrollingFrame")
     listScroll.Size = UDim2.new(1, -20, 0, 130)
     listScroll.Position = UDim2.new(0, 10, 0, 55)
@@ -197,7 +196,6 @@ local function createDropdownMenu(titleText, list, selectionTable, toggleKey)
     topBar.MouseButton1Click:Connect(function()
         expanded = not expanded
         TweenService:Create(outerFrame, TweenInfo.new(0.3), {Size = expanded and UDim2.new(0.95, 0, 0, 200) or UDim2.new(0.95, 0, 0, 50)}):Play()
-        -- Ensure other scrolling frame doesn't block this one
         listScroll.Visible = expanded
     end)
 
@@ -279,6 +277,39 @@ end
 createDropdownMenu("Select Crates", crateList, selectedCrates, "Crates")
 createDropdownMenu("Select Potions", potionList, selectedPotions, "Potions")
 
+-- NEW FEATURE: AUTO TOUCH SLOTS 1-12
+createSwitch("Auto Touch (1-12)", function(state)
+    toggles.AutoTouch = state
+    if state then
+        task.spawn(function()
+            while toggles.AutoTouch do
+                -- Loop Plots 1-12
+                for p = 1, 12 do
+                    local plot = workspace.Plots:FindFirstChild("Plot" .. p)
+                    if plot then
+                        -- Loop Slots 1-12
+                        for s = 1, 12 do
+                            task.spawn(function()
+                                local slot = plot.Slots:FindFirstChild(tostring(s))
+                                if slot and slot:FindFirstChild("Button") then
+                                    local btn = slot.Button
+                                    local root = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+                                    if root and firetouchinterest then
+                                        firetouchinterest(btn, root, 0)
+                                        task.wait()
+                                        firetouchinterest(btn, root, 1)
+                                    end
+                                end
+                            end)
+                        end
+                    end
+                end
+                task.wait(1) -- Execute the whole burst every 1 second
+            end
+        end)
+    end
+end)
+
 createSwitch("Anti-AFK", function(state)
     toggles.AntiAFK = state
     if state then
@@ -336,4 +367,4 @@ end
 makeDraggable(mainFrame)
 makeDraggable(minButton)
 
-print("✅ Angelo Pogi Hub: Fixed Scrollable Menus Loaded!")
+print("✅ Angelo Pogi Hub: Auto Touch Updated!")
