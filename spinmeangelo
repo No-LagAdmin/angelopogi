@@ -291,7 +291,7 @@ createSwitch("Auto Collect Money", function(state)
                                     if root and firetouchinterest then
                                         firetouchinterest(btn, root, 0)
                                         task.wait()
-                                        firetouchinterest(btn, root, 1)
+                                        firetouchinterest(btn, root, 3)
                                     end
                                 end
                             end)
