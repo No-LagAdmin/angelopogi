@@ -4,12 +4,13 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TweenService = game:GetService("TweenService")
 local UserInputService = game:GetService("UserInputService")
 local HttpService = game:GetService("HttpService")
+local RunService = game:GetService("RunService")
 
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
 
 -- File Settings
-local filename = "AngeloPogi_Save.json"
+local filename = "AngeloPogi_Stable.json"
 
 -- Logic Variables
 local toggles = { Crates = false, Potions = false, AntiAFK = false, EquipBest = false, AutoCollect = false }
@@ -17,18 +18,12 @@ local selectedCrates = {}
 local selectedPotions = {}
 
 -- ==========================================
--- CONFIGURATION SYSTEM (FORCE SAVE)
+-- MEMORY & CONFIG MANAGEMENT
 -- ==========================================
 local function saveConfig()
-    local data = { 
-        Toggles = toggles, 
-        Crates = selectedCrates, 
-        Potions = selectedPotions 
-    }
     pcall(function() 
         if writefile then 
-            writefile(filename, HttpService:JSONEncode(data)) 
-            print("💾 Angelo Hub: Saved to " .. filename)
+            writefile(filename, HttpService:JSONEncode({T = toggles, C = selectedCrates, P = selectedPotions})) 
         end 
     end)
 end
@@ -36,84 +31,65 @@ end
 local function loadConfig()
     pcall(function()
         if isfile and isfile(filename) then
-            local decoded = HttpService:JSONDecode(readfile(filename))
-            -- Merging data carefully
-            for k, v in pairs(decoded.Toggles or {}) do toggles[k] = v end
-            for k, v in pairs(decoded.Crates or {}) do selectedCrates[k] = v end
-            for k, v in pairs(decoded.Potions or {}) do selectedPotions[k] = v end
-            print("📂 Angelo Hub: Config Loaded")
+            local d = HttpService:JSONDecode(readfile(filename))
+            toggles = d.T or toggles; selectedCrates = d.C or {}; selectedPotions = d.P or {}
         end
     end)
 end
-
 loadConfig()
 
--- ==========================================
--- AFK STABILITY & COLLECTION
--- ==========================================
-
--- Optimized Plot Finder (Checks every possible way a plot is owned)
-local function getMyPlot()
-    for _, obj in pairs(workspace:GetDescendants()) do
-        if obj.Name == "Owner" or obj.Name == "Player" or obj.Name == "OwnerName" then
-            if obj:IsA("ValueBase") and (obj.Value == player.Name or tostring(obj.Value) == tostring(player.UserId)) then
-                return obj.Parent -- Returns the Plot frame
-            end
-        end
-    end
-    return nil
-end
-
--- AUTO COLLECT (Ultra-Aggressive Touch)
+-- Memory Leak Prevention (Clears internal Lua cache)
 task.spawn(function()
-    while true do
-        if toggles.AutoCollect then
-            local char = player.Character
-            local root = char and char:FindFirstChild("HumanoidRootPart")
-            if root then
-                local plot = getMyPlot()
-                pcall(function()
-                    -- If plot found, touch everything inside it with a TouchInterest
-                    if plot then
-                        for _, v in pairs(plot:GetDescendants()) do
-                            if v:IsA("TouchTransmitter") then
-                                firetouchinterest(v.Parent, root, 0)
-                                task.wait()
-                                firetouchinterest(v.Parent, root, 1)
-                            end
-                        end
-                    else
-                        -- Backup: Touch anything nearby named 'Button' or 'Collect'
-                        for _, v in pairs(workspace:GetChildren()) do
-                            if (v.Name:find("Button") or v.Name:find("Collect")) and v:IsA("BasePart") then
-                                if (v.Position - root.Position).Magnitude < 20 then
-                                    firetouchinterest(v, root, 0)
-                                    task.wait()
-                                    firetouchinterest(v, root, 1)
-                                end
-                            end
-                        end
-                    end
-                end)
-            end
-        end
-        task.wait(4) -- Long wait to prevent AFK crashing
+    while task.wait(60) do
+        collectgarbage("collect")
     end
 end)
 
--- AUTO POTION & CRATE (Merged for efficiency)
+-- ==========================================
+-- THE FIX: REMOTE-BASED COLLECTION
+-- ==========================================
+
 task.spawn(function()
     while true do
-        if toggles.Potions then
-            for name, _ in pairs(selectedPotions) do
-                ReplicatedStorage.Events.Potion.purchase:FireServer(name, 1)
-                task.wait(1)
+        if toggles.AutoCollect then
+            pcall(function()
+                -- Spin a Anime often uses a specific Remote for collecting.
+                -- We fire the 'Claim' or 'Collect' event directly to bypass physical touching.
+                local plotEvent = ReplicatedStorage:FindFirstChild("Events") and ReplicatedStorage.Events:FindFirstChild("Plot")
+                if plotEvent and plotEvent:FindFirstChild("collectMoney") then
+                    plotEvent.collectMoney:FireServer()
+                else
+                    -- Fallback: If no direct remote, use the 'Humanoid' touch bypass
+                    local root = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+                    if root then
+                        for _, v in pairs(workspace:GetDescendants()) do
+                            if v.Name == "Collect" and v:IsA("BasePart") then
+                                firetouchinterest(v, root, 0)
+                                task.wait()
+                                firetouchinterest(v, root, 1)
+                            end
+                        end
+                    end
+                end
+            end)
+        end
+        task.wait(5) -- Slow frequency = No Crash
+    end
+end)
+
+-- AUTO CRATE & POTION (Buffered to prevent Network Overload)
+task.spawn(function()
+    while true do
+        if toggles.Crates then
+            for n, _ in pairs(selectedCrates) do
+                ReplicatedStorage.Events.Crate.purchase:FireServer(n, 1)
+                task.wait(2)
             end
         end
-        if toggles.Crates then
-            for name, _ in pairs(selectedCrates) do
-                ReplicatedStorage.Events.Crate.purchase:FireServer(name, 1)
-                task.wait(1)
+        if toggles.Potions then
+            for n, _ in pairs(selectedPotions) do
+                ReplicatedStorage.Events.Potion.purchase:FireServer(n, 1)
+                task.wait(2)
             end
         end
         task.wait(2)
@@ -121,99 +97,76 @@ task.spawn(function()
 end)
 
 -- ==========================================
--- UI DESIGN
+-- CLEAN & LIGHTWEIGHT UI
 -- ==========================================
 if playerGui:FindFirstChild("AngeloPogiHub") then playerGui.AngeloPogiHub:Destroy() end
 
 local screenGui = Instance.new("ScreenGui", playerGui)
 screenGui.Name = "AngeloPogiHub"
-screenGui.ResetOnSpawn = false
 
 local main = Instance.new("Frame", screenGui)
-main.Size = UDim2.new(0, 340, 0, 420)
-main.Position = UDim2.new(0.5, -170, 0.5, -210)
-main.BackgroundColor3 = Color3.fromRGB(18, 18, 22)
+main.Size = UDim2.new(0, 300, 0, 350)
+main.Position = UDim2.new(0.5, -150, 0.5, -175)
+main.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
 Instance.new("UICorner", main)
 
-local header = Instance.new("Frame", main)
-header.Size = UDim2.new(1, 0, 0, 45); header.BackgroundColor3 = Color3.fromRGB(25, 25, 30)
-Instance.new("UICorner", header)
-
-local title = Instance.new("TextLabel", header)
-title.Size = UDim2.new(1, 0, 1, 0); title.Text = "  ANGELO POGI HUB V2"; title.TextColor3 = Color3.new(1,1,1); title.Font = Enum.Font.GothamBold; title.BackgroundTransparency = 1; title.TextXAlignment = 0
-
 local container = Instance.new("ScrollingFrame", main)
-container.Size = UDim2.new(1, -10, 1, -55); container.Position = UDim2.new(0, 5, 0, 50)
-container.BackgroundTransparency = 1; container.AutomaticCanvasSize = 2; container.ScrollBarThickness = 3
-Instance.new("UIListLayout", container).Padding = UDim.new(0, 8)
+container.Size = UDim2.new(1, -10, 1, -20); container.Position = UDim2.new(0, 5, 0, 10)
+container.BackgroundTransparency = 1; container.AutomaticCanvasSize = 2; container.ScrollBarThickness = 2
+Instance.new("UIListLayout", container).Padding = UDim.new(0, 5)
 
--- UI Builders
-local function createSwitch(text, key, callback)
-    local row = Instance.new("Frame", container)
-    row.Size = UDim2.new(0.95, 0, 0, 45); row.BackgroundColor3 = Color3.fromRGB(26, 26, 32); Instance.new("UICorner", row)
-    
-    local lbl = Instance.new("TextLabel", row)
-    lbl.Size = UDim2.new(0.7, 0, 1, 0); lbl.Position = UDim2.new(0, 12, 0, 0); lbl.Text = text; lbl.TextColor3 = Color3.fromRGB(200, 200, 200); lbl.BackgroundTransparency = 1; lbl.TextXAlignment = 0
-    
-    local btn = Instance.new("TextButton", row)
-    btn.Size = UDim2.new(0, 40, 0, 20); btn.Position = UDim2.new(1, -50, 0.5, -10)
-    btn.BackgroundColor3 = toggles[key] and Color3.fromRGB(0, 255, 127) or Color3.fromRGB(60, 60, 70); btn.Text = ""
-    Instance.new("UICorner", btn).CornerRadius = UDim.new(1, 0)
+-- Minimal Toggle Creator
+local function makeToggle(txt, key)
+    local btn = Instance.new("TextButton", container)
+    btn.Size = UDim2.new(0.95, 0, 0, 35); btn.BackgroundColor3 = toggles[key] and Color3.fromRGB(0, 150, 0) or Color3.fromRGB(40, 40, 40)
+    btn.Text = txt; btn.TextColor3 = Color3.new(1,1,1); Instance.new("UICorner", btn)
     
     btn.MouseButton1Click:Connect(function()
         toggles[key] = not toggles[key]
-        btn.BackgroundColor3 = toggles[key] and Color3.fromRGB(0, 255, 127) or Color3.fromRGB(60, 60, 70)
+        btn.BackgroundColor3 = toggles[key] and Color3.fromRGB(0, 150, 0) or Color3.fromRGB(40, 40, 40)
         saveConfig()
-        if callback then task.spawn(function() callback(toggles[key]) end) end
     end)
 end
 
-local function createDropdown(text, list, selection, key)
-    local frame = Instance.new("Frame", container)
-    frame.Size = UDim2.new(0.95, 0, 0, 45); frame.BackgroundColor3 = Color3.fromRGB(26, 26, 32); frame.ClipsDescendants = true; Instance.new("UICorner", frame)
+-- Minimal Dropdown Creator
+local function makeDrop(txt, list, selection, key)
+    local dropFrame = Instance.new("Frame", container)
+    dropFrame.Size = UDim2.new(0.95, 0, 0, 35); dropFrame.ClipsDescendants = true; dropFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+    Instance.new("UICorner", dropFrame)
     
-    local btn = Instance.new("TextButton", frame)
-    btn.Size = UDim2.new(1, 0, 0, 45); btn.Text = "  " .. text; btn.TextColor3 = Color3.new(1,1,1); btn.BackgroundTransparency = 1; btn.TextXAlignment = 0
+    local btn = Instance.new("TextButton", dropFrame)
+    btn.Size = UDim2.new(1, 0, 0, 35); btn.Text = txt; btn.BackgroundColor3 = Color3.fromRGB(50, 50, 70); btn.TextColor3 = Color3.new(1,1,1)
     
-    local inner = Instance.new("ScrollingFrame", frame)
-    inner.Size = UDim2.new(1, -20, 0, 120); inner.Position = UDim2.new(0, 10, 0, 50); inner.BackgroundTransparency = 1; inner.AutomaticCanvasSize = 2
-    Instance.new("UIGridLayout", inner).CellSize = UDim2.new(0, 90, 0, 25)
+    local content = Instance.new("Frame", dropFrame)
+    content.Position = UDim2.new(0, 0, 0, 40); content.Size = UDim2.new(1, 0, 0, 100)
+    Instance.new("UIListLayout", content)
 
-    for _, name in pairs(list) do
-        local opt = Instance.new("TextButton", inner)
-        opt.Text = name; opt.BackgroundColor3 = selection[name] and Color3.fromRGB(0, 150, 255) or Color3.fromRGB(45, 45, 55); opt.TextColor3 = Color3.new(1,1,1); Instance.new("UICorner", opt)
+    for _, item in pairs(list) do
+        local opt = Instance.new("TextButton", content)
+        opt.Size = UDim2.new(1, 0, 0, 25); opt.Text = item; opt.BackgroundColor3 = selection[item] and Color3.fromRGB(0, 100, 200) or Color3.fromRGB(20, 20, 20)
         opt.MouseButton1Click:Connect(function()
-            if selection[name] then selection[name] = nil else selection[name] = true end
-            opt.BackgroundColor3 = selection[name] and Color3.fromRGB(0, 150, 255) or Color3.fromRGB(45, 45, 55)
+            selection[item] = not selection[item] or nil
+            opt.BackgroundColor3 = selection[item] and Color3.fromRGB(0, 100, 200) or Color3.fromRGB(20, 20, 20)
             saveConfig()
         end)
     end
+
     btn.MouseButton1Click:Connect(function()
-        local expanded = frame.Size.Y.Offset == 45
-        TweenService:Create(frame, TweenInfo.new(0.3), {Size = expanded and UDim2.new(0.95, 0, 0, 180) or UDim2.new(0.95, 0, 0, 45)}):Play()
+        dropFrame.Size = (dropFrame.Size.Y.Offset == 35) and UDim2.new(0.95, 0, 0, 140) or UDim2.new(0.95, 0, 0, 35)
     end)
-    createSwitch("Enable " .. text, key)
 end
 
--- Data
-local crates = {"Heaven", "Music", "Cyber", "Steampunk", "Graffiti", "Vampiric", "Construction", "Manga", "Samurai", "Royal", "Magma", "Porcelain", "Hell", "Ghost", "Abandoned", "Haunted", "Celestial", "Red Moon", "Vortex", "Cursed", "Devilous"}
-local potions = {"Yen", "Lucky", "Mutation", "Super Yen", "Super Lucky", "Rich", "Clover", "Angelic", "Bank", "Evil", "Fairy", "Greed"}
+-- Build
+makeToggle("Auto Collect Money", "AutoCollect")
+makeToggle("Anti-AFK", "AntiAFK")
+makeDrop("Select Crates", {"Heaven", "Cyber", "Magma", "Cursed"}, selectedCrates, "Crates")
+makeDrop("Select Potions", {"Yen", "Lucky", "Angelic", "Greed"}, selectedPotions, "Potions")
+makeToggle("Enable Auto Crates", "Crates")
+makeToggle("Enable Auto Potions", "Potions")
 
-createDropdown("Auto Crates", crates, selectedCrates, "Crates")
-createDropdown("Auto Potions", potions, selectedPotions, "Potions")
-createSwitch("Auto Collect Money", "AutoCollect")
-createSwitch("Anti-AFK", "AntiAFK", function(s)
-    local VU = game:GetService("VirtualUser")
-    while toggles.AntiAFK do VU:CaptureController(); VU:ClickButton2(Vector2.new()); task.wait(30) end
-end)
-createSwitch("Auto Equip Best", "EquipBest", function(s)
-    while toggles.EquipBest do pcall(function() ReplicatedStorage.Events.Plot.equipBest:InvokeServer() end); task.wait(30) end
-end)
+-- Dragging
+local d, ds, sp; main.InputBegan:Connect(function(i) if i.UserInputType == Enum.UserInputType.MouseButton1 then d = true; ds = i.Position; sp = main.Position end end)
+UserInputService.InputChanged:Connect(function(i) if d and i.UserInputType == Enum.UserInputType.MouseMovement then local delta = i.Position - ds; main.Position = UDim2.new(sp.X.Scale, sp.X.Offset + delta.X, sp.Y.Scale, sp.Y.Offset + delta.Y) end end)
+UserInputService.InputEnded:Connect(function(i) if i.UserInputType == Enum.UserInputType.MouseButton1 then d = false end end)
 
--- Draggable
-local dragging, dragStart, startPos
-main.InputBegan:Connect(function(i) if i.UserInputType == Enum.UserInputType.MouseButton1 then dragging = true; dragStart = i.Position; startPos = main.Position end end)
-UserInputService.InputChanged:Connect(function(i) if dragging and i.UserInputType == Enum.UserInputType.MouseMovement then local delta = i.Position - dragStart; main.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y) end end)
-UserInputService.InputEnded:Connect(function(i) if i.UserInputType == Enum.UserInputType.MouseButton1 then dragging = false end end)
-
-print("✅ FINAL STABLE Angelo Hub Loaded.")
+print("✅ Indestructible Angelo Hub Loaded.")
