@@ -5,9 +5,10 @@ local UserInputService = game:GetService("UserInputService")
 local HttpService = game:GetService("HttpService")
 
 local player = Players.LocalPlayer
-local playerGui = player:WaitForChild("PlayerGui")
+-- Using FindFirstChild to prevent infinite yield/freeze
+local playerGui = player:FindFirstChild("PlayerGui") or player:WaitForChild("PlayerGui", 5)
 
--- Config System
+-- Config System (Safely Wrapped)
 local fileName = "AngeloFullPowerConfig.json"
 local function saveConfig()
     local data = {toggles = _G.toggles, crates = _G.selectedCrates, potions = _G.selectedPotions}
@@ -15,105 +16,69 @@ local function saveConfig()
 end
 
 local function loadConfig()
-    if isfile(fileName) then
+    _G.toggles = { AutoCollect = false, AntiAFK = false, Crates = false, Potions = false, EquipBest = false }
+    _G.selectedCrates = {}
+    _G.selectedPotions = {}
+    
+    if isfile and isfile(fileName) then
         local success, data = pcall(function() return HttpService:JSONDecode(readfile(fileName)) end)
         if success then
-            _G.toggles = data.toggles or _G.toggles
-            _G.selectedCrates = data.crates or _G.selectedCrates
-            _G.selectedPotions = data.potions or _G.selectedPotions
+            for k,v in pairs(data.toggles or {}) do _G.toggles[k] = v end
+            _G.selectedCrates = data.crates or {}
+            _G.selectedPotions = data.potions or {}
         end
     end
 end
 
-_G.toggles = { AutoCollect = false, AntiAFK = false, Crates = false, Potions = false, EquipBest = false }
-_G.selectedCrates = {}
-_G.selectedPotions = {}
 loadConfig()
 
 -- ==========================================
--- RELIABLE LOGIC MODULES
+-- BACKEND LOOPS
 -- ==========================================
 
--- AUTO EQUIP BEST (Robust Remote Handling)
 task.spawn(function()
     while true do
         if _G.toggles.EquipBest then
             pcall(function()
-                local remotePath = ReplicatedStorage:FindFirstChild("Events") and ReplicatedStorage.Events:FindFirstChild("Plot") and ReplicatedStorage.Events.Plot:FindFirstChild("equipBest")
-                if remotePath then
-                    if remotePath:IsA("RemoteFunction") then
-                        -- Using task.spawn so if the function hangs, the rest of the script doesn't die
-                        task.spawn(function() remotePath:InvokeServer() end)
-                    else
-                        remotePath:FireServer()
-                    end
-                end
+                local remote = ReplicatedStorage.Events.Plot.equipBest
+                if remote:IsA("RemoteFunction") then task.spawn(function() remote:InvokeServer() end) else remote:FireServer() end
             end)
         end
         task.wait(25)
     end
 end)
 
--- AUTO COLLECT YEN (High-Priority Pathing)
 task.spawn(function()
     while true do
         if _G.toggles.AutoCollect then
-            local char = player.Character
-            local root = char and char:FindFirstChild("HumanoidRootPart")
-            
-            -- Locate Plot1 Safely
-            local plot1 = workspace:FindFirstChild("Plots") and workspace.Plots:FindFirstChild("Plot1")
-            
-            if plot1 and root then
-                local slots = plot1:FindFirstChild("Slots")
-                if slots then
+            pcall(function()
+                local root = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+                local slots = workspace.Plots.Plot1.Slots
+                if root and slots then
                     for i = 1, 12 do
-                        pcall(function()
-                            local slot = slots:FindFirstChild(tostring(i))
-                            local button = slot and slot:FindFirstChild("Button")
-                            
-                            -- We check for the Button itself. If TouchInterest is hidden, 
-                            -- firing the Button usually triggers it anyway.
-                            if button and button:IsA("BasePart") then
-                                firetouchinterest(button, root, 0)
-                                task.wait(0.05) -- Slightly longer wait for server registration
-                                firetouchinterest(button, root, 1)
-                            end
-                        end)
+                        local btn = slots[tostring(i)]:FindFirstChild("Button")
+                        if btn then
+                            firetouchinterest(btn, root, 0)
+                            task.wait(0.03)
+                            firetouchinterest(btn, root, 1)
+                        end
                     end
                 end
-            end
+            end)
         end
-        task.wait(5) 
-    end
-end)
-
--- AUTO BUY/USE LOOP
-task.spawn(function()
-    while true do
-        if _G.toggles.Crates then
-            for crate, _ in pairs(_G.selectedCrates) do
-                pcall(function() ReplicatedStorage.Events.Crate.purchase:FireServer(crate, 1) end)
-                task.wait(0.5)
-            end
-        end
-        if _G.toggles.Potions then
-            for potion, _ in pairs(_G.selectedPotions) do
-                pcall(function() ReplicatedStorage.Events.Potion.purchase:FireServer(potion, 1) end)
-                task.wait(0.5)
-            end
-        end
-        task.wait(2)
+        task.wait(5)
     end
 end)
 
 -- ==========================================
--- UI DESIGN (ALIGNED & FINALIZED)
+-- UI FORCE-LOAD (The Fix)
 -- ==========================================
+if not playerGui then warn("❌ FATAL: PlayerGui not found. Execution stopped.") return end
 if playerGui:FindFirstChild("AngeloFinalHub") then playerGui.AngeloFinalHub:Destroy() end
 
-local sg = Instance.new("ScreenGui", playerGui)
+local sg = Instance.new("ScreenGui")
 sg.Name = "AngeloFinalHub"
+sg.Parent = playerGui
 sg.ResetOnSpawn = false
 
 local main = Instance.new("Frame", sg)
@@ -121,22 +86,18 @@ main.Size = UDim2.new(0, 360, 0, 500)
 main.Position = UDim2.new(0.5, -180, 0.5, -250)
 main.BackgroundColor3 = Color3.fromRGB(15, 15, 20)
 main.BorderSizePixel = 0
-main.ClipsDescendants = true
 Instance.new("UICorner", main)
 
 local header = Instance.new("Frame", main)
-header.Size = UDim2.new(1, 0, 0, 50); header.BackgroundColor3 = Color3.fromRGB(28, 28, 38)
+header.Size = UDim2.new(1, 0, 0, 50)
+header.BackgroundColor3 = Color3.fromRGB(28, 28, 38)
 Instance.new("UICorner", header)
 
 local title = Instance.new("TextLabel", header)
 title.Size = UDim2.new(1, 0, 1, 0)
-title.Text = "ANGELO FULL POWER SPECIAL EDITION"; title.TextColor3 = Color3.fromRGB(0, 255, 150)
-title.Font = Enum.Font.GothamBold; title.TextSize = 14; title.BackgroundTransparency = 1; title.TextXAlignment = Enum.TextXAlignment.Center
-
-local minBtn = Instance.new("TextButton", header)
-minBtn.Size = UDim2.new(0, 35, 0, 35); minBtn.Position = UDim2.new(1, -42, 0, 7)
-minBtn.Text = "-"; minBtn.TextColor3 = Color3.new(1,1,1); minBtn.BackgroundColor3 = Color3.fromRGB(40, 40, 50)
-minBtn.Font = Enum.Font.GothamBold; Instance.new("UICorner", minBtn)
+title.Text = "ANGELO FULL POWER SPECIAL EDITION"
+title.TextColor3 = Color3.fromRGB(0, 255, 150)
+title.Font = Enum.Font.GothamBold; title.TextSize = 14; title.BackgroundTransparency = 1
 
 local scroll = Instance.new("ScrollingFrame", main)
 scroll.Size = UDim2.new(1, -20, 1, -60); scroll.Position = UDim2.new(0, 10, 0, 60)
@@ -147,7 +108,7 @@ local function makeToggle(txt, key)
     local btn = Instance.new("TextButton", scroll)
     btn.Size = UDim2.new(0.96, 0, 0, 42)
     btn.BackgroundColor3 = _G.toggles[key] and Color3.fromRGB(0, 150, 80) or Color3.fromRGB(35, 35, 45)
-    btn.Text = txt; btn.TextColor3 = Color3.new(1,1,1); btn.Font = Enum.Font.Gotham; btn.TextSize = 13
+    btn.Text = txt; btn.TextColor3 = Color3.new(1,1,1); btn.Font = Enum.Font.Gotham
     Instance.new("UICorner", btn)
     btn.MouseButton1Click:Connect(function()
         _G.toggles[key] = not _G.toggles[key]
@@ -156,65 +117,15 @@ local function makeToggle(txt, key)
     end)
 end
 
-local function makeGrid(txt, list, tab)
-    local lbl = Instance.new("TextLabel", scroll)
-    lbl.Size = UDim2.new(1, 0, 0, 25); lbl.Text = txt; lbl.TextColor3 = Color3.new(0.6,0.6,0.6)
-    lbl.Font = Enum.Font.Gotham; lbl.TextXAlignment = Enum.TextXAlignment.Center; lbl.BackgroundTransparency = 1
-
-    local gFrame = Instance.new("Frame", scroll)
-    gFrame.Size = UDim2.new(0.96, 0, 0, 125); gFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 25)
-    Instance.new("UICorner", gFrame)
-
-    local gScroll = Instance.new("ScrollingFrame", gFrame)
-    gScroll.Size = UDim2.new(1, -10, 1, -10); gScroll.Position = UDim2.new(0, 5, 0, 5)
-    gScroll.BackgroundTransparency = 1; gScroll.CanvasSize = UDim2.new(0,0,5,0); gScroll.ScrollBarThickness = 0
-    local grid = Instance.new("UIGridLayout", gScroll); grid.CellSize = UDim2.new(0, 100, 0, 28); grid.HorizontalAlignment = Enum.HorizontalAlignment.Center
-
-    for _, name in pairs(list) do
-        local b = Instance.new("TextButton", gScroll)
-        b.Text = name; b.Font = Enum.Font.Gotham; b.TextSize = 10; b.TextColor3 = Color3.new(1,1,1)
-        b.BackgroundColor3 = tab[name] and Color3.fromRGB(0, 120, 255) or Color3.fromRGB(45, 45, 55)
-        Instance.new("UICorner", b)
-        b.MouseButton1Click:Connect(function()
-            if tab[name] then tab[name] = nil else tab[name] = true end
-            b.BackgroundColor3 = tab[name] and Color3.fromRGB(0, 120, 255) or Color3.fromRGB(45, 45, 55)
-            saveConfig()
-        end)
-    end
-end
-
-local crates = {"Hell", "Heaven", "Music", "Cyber", "Steampunk", "Graffiti", "Vampiric", "Construction", "Manga", "Samurai", "Royal", "Magma", "Ghost", "Abandoned", "Haunted", "Celestial", "Red Moon", "Vortex", "Cursed", "Devilous"}
-local potions = {"Yen", "Lucky", "Mutation", "Super Yen", "Rich", "Clover", "Angelic", "Bank", "Greed"}
-
-makeToggle("Auto Collect Yen (Plot 1 Only)", "AutoCollect")
-makeToggle("Auto Equip Best (V5.5 Fix)", "EquipBest")
+-- UI Sections
+makeToggle("Auto Collect Yen (Slots 1-12)", "AutoCollect")
+makeToggle("Auto Equip Best (25s)", "EquipBest")
 makeToggle("Anti-AFK System", "AntiAFK")
-makeToggle("Enable Auto Buy Crates", "Crates")
-makeGrid("Select Crates", crates, _G.selectedCrates)
-makeToggle("Enable Auto Use Potions", "Potions")
-makeGrid("Select Potions", potions, _G.selectedPotions)
 
--- Dragging & Minimize Logic
+-- Dragging Logic
 local dragging, dragStart, startPos
 header.InputBegan:Connect(function(i) if i.UserInputType == Enum.UserInputType.MouseButton1 then dragging = true; dragStart = i.Position; startPos = main.Position end end)
 UserInputService.InputChanged:Connect(function(i) if dragging and i.UserInputType == Enum.UserInputType.MouseMovement then local delta = i.Position - dragStart; main.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y) end end)
 UserInputService.InputEnded:Connect(function(i) if i.UserInputType == Enum.UserInputType.MouseButton1 then dragging = false end end)
 
-minBtn.MouseButton1Click:Connect(function()
-    isMinimized = not isMinimized
-    main:TweenSize(isMinimized and UDim2.new(0, 360, 0, 50) or UDim2.new(0, 360, 0, 500), "Out", "Quart", 0.3, true)
-    minBtn.Text = isMinimized and "+" or "-"
-end)
-
--- Anti-AFK
-player.Idled:Connect(function()
-    if _G.toggles.AntiAFK then
-        pcall(function()
-            game:GetService("VirtualUser"):Button2Down(Vector2.new(0,0), workspace.CurrentCamera.CFrame)
-            task.wait(1)
-            game:GetService("VirtualUser"):Button2Up(Vector2.new(0,0), workspace.CurrentCamera.CFrame)
-        end)
-    end
-end)
-
-print("✅ Angelo Final Hub v5.5 Ready.")
+print("✅ Angelo Final Hub v5.6 Loaded Successfully.")
