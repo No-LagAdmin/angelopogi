@@ -2,25 +2,47 @@
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local UserInputService = game:GetService("UserInputService")
-local TweenService = game:GetService("TweenService")
+local HttpService = game:GetService("HttpService")
 
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
 
--- Logic Variables
-local toggles = { AutoCollect = false, AntiAFK = false, Crates = false, Potions = false }
-local selectedCrates = {}
-local selectedPotions = {}
+-- Config System
+local fileName = "AngeloFullPowerConfig.json"
+local function saveConfig()
+    local data = {
+        toggles = _G.toggles,
+        crates = _G.selectedCrates,
+        potions = _G.selectedPotions
+    }
+    writefile(fileName, HttpService:JSONEncode(data))
+end
+
+local function loadConfig()
+    if isfile(fileName) then
+        local data = HttpService:JSONDecode(readfile(fileName))
+        _G.toggles = data.toggles or _G.toggles
+        _G.selectedCrates = data.crates or _G.selectedCrates
+        _G.selectedPotions = data.potions or _G.selectedPotions
+    end
+end
+
+-- Global Logic Variables
+_G.toggles = { AutoCollect = false, AntiAFK = false, Crates = false, Potions = false }
+_G.selectedCrates = {}
+_G.selectedPotions = {}
 local isMinimized = false
+
+loadConfig() -- Load previous settings on startup
 
 -- ==========================================
 -- STABLE BACKEND (Plot 1 Dedicated)
 -- ==========================================
 
--- AUTO COLLECT YEN LOOP
+-- AUTO COLLECT YEN (5s Interval for Stability)
 task.spawn(function()
     while true do
-        if toggles.AutoCollect then
+        if _G.toggles.AutoCollect then
             pcall(function()
                 local char = player.Character
                 local root = char and char:FindFirstChild("HumanoidRootPart")
@@ -49,14 +71,14 @@ end)
 -- AUTO BUY/USE LOOP
 task.spawn(function()
     while true do
-        if toggles.Crates then
-            for crate, _ in pairs(selectedCrates) do
+        if _G.toggles.Crates then
+            for crate, _ in pairs(_G.selectedCrates) do
                 pcall(function() ReplicatedStorage.Events.Crate.purchase:FireServer(crate, 1) end)
                 task.wait(0.5)
             end
         end
-        if toggles.Potions then
-            for potion, _ in pairs(selectedPotions) do
+        if _G.toggles.Potions then
+            for potion, _ in pairs(_G.selectedPotions) do
                 pcall(function() ReplicatedStorage.Events.Potion.purchase:FireServer(potion, 1) end)
                 task.wait(0.5)
             end
@@ -66,12 +88,12 @@ task.spawn(function()
 end)
 
 -- ==========================================
--- UI DESIGN (ALIGNED & UPDATED)
+-- UI DESIGN (FINAL SPECIAL EDITION)
 -- ==========================================
-if playerGui:FindFirstChild("AngeloFullPower") then playerGui.AngeloFullPower:Destroy() end
+if playerGui:FindFirstChild("AngeloFinalHub") then playerGui.AngeloFinalHub:Destroy() end
 
 local sg = Instance.new("ScreenGui", playerGui)
-sg.Name = "AngeloFullPower"
+sg.Name = "AngeloFinalHub"
 sg.ResetOnSpawn = false
 
 local main = Instance.new("Frame", sg)
@@ -87,7 +109,7 @@ header.Size = UDim2.new(1, 0, 0, 50); header.BackgroundColor3 = Color3.fromRGB(2
 Instance.new("UICorner", header)
 
 local title = Instance.new("TextLabel", header)
-title.Size = UDim2.new(1, 0, 1, 0); title.Position = UDim2.new(0, 0, 0, 0)
+title.Size = UDim2.new(1, 0, 1, 0)
 title.Text = "ANGELO FULL POWER SPECIAL EDITION"; title.TextColor3 = Color3.fromRGB(0, 255, 150)
 title.Font = Enum.Font.GothamBold; title.TextSize = 14; title.BackgroundTransparency = 1; title.TextXAlignment = Enum.TextXAlignment.Center
 
@@ -104,13 +126,13 @@ Instance.new("UIListLayout", scroll).Padding = UDim.new(0, 8)
 local function makeToggle(txt, key)
     local btn = Instance.new("TextButton", scroll)
     btn.Size = UDim2.new(0.96, 0, 0, 42)
-    btn.BackgroundColor3 = toggles[key] and Color3.fromRGB(0, 150, 80) or Color3.fromRGB(35, 35, 45)
+    btn.BackgroundColor3 = _G.toggles[key] and Color3.fromRGB(0, 150, 80) or Color3.fromRGB(35, 35, 45)
     btn.Text = txt; btn.TextColor3 = Color3.new(1,1,1); btn.Font = Enum.Font.Gotham; btn.TextSize = 13
-    btn.TextXAlignment = Enum.TextXAlignment.Center -- Fixed Alignment
     Instance.new("UICorner", btn)
     btn.MouseButton1Click:Connect(function()
-        toggles[key] = not toggles[key]
-        btn.BackgroundColor3 = toggles[key] and Color3.fromRGB(0, 150, 80) or Color3.fromRGB(35, 35, 45)
+        _G.toggles[key] = not _G.toggles[key]
+        btn.BackgroundColor3 = _G.toggles[key] and Color3.fromRGB(0, 150, 80) or Color3.fromRGB(35, 35, 45)
+        saveConfig()
     end)
 end
 
@@ -120,12 +142,12 @@ local function makeGrid(txt, list, tab)
     lbl.Font = Enum.Font.Gotham; lbl.TextXAlignment = Enum.TextXAlignment.Center; lbl.BackgroundTransparency = 1
 
     local gFrame = Instance.new("Frame", scroll)
-    gFrame.Size = UDim2.new(0.96, 0, 0, 110); gFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 25)
+    gFrame.Size = UDim2.new(0.96, 0, 0, 125); gFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 25)
     Instance.new("UICorner", gFrame)
 
     local gScroll = Instance.new("ScrollingFrame", gFrame)
     gScroll.Size = UDim2.new(1, -10, 1, -10); gScroll.Position = UDim2.new(0, 5, 0, 5)
-    gScroll.BackgroundTransparency = 1; gScroll.CanvasSize = UDim2.new(0,0,3.5,0); gScroll.ScrollBarThickness = 0
+    gScroll.BackgroundTransparency = 1; gScroll.CanvasSize = UDim2.new(0,0,5,0); gScroll.ScrollBarThickness = 0
     local grid = Instance.new("UIGridLayout", gScroll); grid.CellSize = UDim2.new(0, 100, 0, 28); grid.HorizontalAlignment = Enum.HorizontalAlignment.Center
 
     for _, name in pairs(list) do
@@ -134,30 +156,35 @@ local function makeGrid(txt, list, tab)
         b.BackgroundColor3 = tab[name] and Color3.fromRGB(0, 120, 255) or Color3.fromRGB(45, 45, 55)
         Instance.new("UICorner", b)
         b.MouseButton1Click:Connect(function()
-            tab[name] = not tab[name] or nil
+            if tab[name] then tab[name] = nil else tab[name] = true end
             b.BackgroundColor3 = tab[name] and Color3.fromRGB(0, 120, 255) or Color3.fromRGB(45, 45, 55)
+            saveConfig()
         end)
     end
 end
 
--- UI Sections
-local crates = {"Heaven", "Devilous", "Music", "Cyber", "Steampunk", "Graffiti", "Vampiric", "Manga", "Samurai", "Royal", "Magma", "Hell", "Celestial", "Vortex", "Cursed"}
+-- Final Configuration Sequence
+local crates = {
+    "Hell", "Heaven", "Music", "Cyber", "Steampunk", "Graffiti", "Vampiric", 
+    "Construction", "Manga", "Samurai", "Royal", "Magma", "Ghost", "Abandoned", 
+    "Haunted", "Celestial", "Red Moon", "Vortex", "Cursed", "Devilous"
+}
 local potions = {"Yen", "Lucky", "Mutation", "Super Yen", "Rich", "Clover", "Angelic", "Bank", "Greed"}
 
+-- Initialize UI
 makeToggle("Auto Collect Yen (Plot 1 Only)", "AutoCollect")
 makeToggle("Anti-AFK System", "AntiAFK")
 makeToggle("Enable Auto Buy Crates", "Crates")
-makeGrid("Select Crates", crates, selectedCrates)
+makeGrid("Select Crates", crates, _G.selectedCrates)
 makeToggle("Enable Auto Use Potions", "Potions")
-makeGrid("Select Potions", potions, selectedPotions)
+makeGrid("Select Potions", potions, _G.selectedPotions)
 
--- Dragging Logic
+-- Dragging & Minimize
 local dragging, dragStart, startPos
 header.InputBegan:Connect(function(i) if i.UserInputType == Enum.UserInputType.MouseButton1 then dragging = true; dragStart = i.Position; startPos = main.Position end end)
 UserInputService.InputChanged:Connect(function(i) if dragging and i.UserInputType == Enum.UserInputType.MouseMovement then local delta = i.Position - dragStart; main.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y) end end)
 UserInputService.InputEnded:Connect(function(i) if i.UserInputType == Enum.UserInputType.MouseButton1 then dragging = false end end)
 
--- Minimize Logic
 minBtn.MouseButton1Click:Connect(function()
     isMinimized = not isMinimized
     main:TweenSize(isMinimized and UDim2.new(0, 360, 0, 50) or UDim2.new(0, 360, 0, 500), "Out", "Quart", 0.3, true)
@@ -166,11 +193,11 @@ end)
 
 -- Anti-AFK
 player.Idled:Connect(function()
-    if toggles.AntiAFK then
+    if _G.toggles.AntiAFK then
         game:GetService("VirtualUser"):Button2Down(Vector2.new(0,0), workspace.CurrentCamera.CFrame)
         task.wait(1)
         game:GetService("VirtualUser"):Button2Up(Vector2.new(0,0), workspace.CurrentCamera.CFrame)
     end
 end)
 
-print("✅ Angelo Full Power Special Edition (v4.1) Loaded.")
+print("✅ Angelo Full Power Special Edition (Final v5.0) Loaded with Config Support.")
