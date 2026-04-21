@@ -1,53 +1,23 @@
--- Services
+-- Wave Paid Compatibility
+if not game:IsLoaded() then game.Loaded:Wait() end
+
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local UserInputService = game:GetService("UserInputService")
-local HttpService = game:GetService("HttpService")
-
 local player = Players.LocalPlayer
-local playerGui = player:FindFirstChild("PlayerGui") or player:WaitForChild("PlayerGui", 10)
+local playerGui = player:WaitForChild("PlayerGui")
 
--- Config System
+-- Logic States
 _G.toggles = { AutoCollect = false, AntiAFK = false, Crates = false, Potions = false, EquipBest = false }
 _G.selectedCrates = {}
 _G.selectedPotions = {}
 
-local fileName = "AngeloFullPowerConfig.json"
-local function saveConfig()
-    local data = {toggles = _G.toggles, crates = _G.selectedCrates, potions = _G.selectedPotions}
-    pcall(function() if writefile then writefile(fileName, HttpService:JSONEncode(data)) end end)
-end
-
-local function loadConfig()
-    pcall(function()
-        if isfile and isfile(fileName) then
-            local data = HttpService:JSONDecode(readfile(fileName))
-            for k, v in pairs(data.toggles or {}) do _G.toggles[k] = v end
-            _G.selectedCrates = data.crates or {}
-            _G.selectedPotions = data.potions or {}
-        end
-    end)
-end
-loadConfig()
-
 -- ==========================================
--- BACKEND LOGIC (Fixed & Silent)
+-- BACKEND LOOPS (Multi-Threaded)
 -- ==========================================
 
+-- AUTO COLLECT & EQUIP
 task.spawn(function()
-    while true do
-        if _G.toggles.EquipBest then
-            pcall(function()
-                local remote = ReplicatedStorage.Events.Plot.equipBest
-                if remote:IsA("RemoteFunction") then task.spawn(function() remote:InvokeServer() end) else remote:FireServer() end
-            end)
-        end
-        task.wait(25)
-    end
-end)
-
-task.spawn(function()
-    while true do
+    while task.wait(5) do
         if _G.toggles.AutoCollect then
             pcall(function()
                 local root = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
@@ -55,117 +25,113 @@ task.spawn(function()
                 if root and slots then
                     for i = 1, 12 do
                         local btn = slots[tostring(i)]:FindFirstChild("Button")
-                        if btn then
-                            firetouchinterest(btn, root, 0)
-                            task.wait(0.03)
-                            firetouchinterest(btn, root, 1)
-                        end
+                        if btn then firetouchinterest(btn, root, 0) task.wait(0.01) firetouchinterest(btn, root, 1) end
                     end
                 end
             end)
         end
-        task.wait(5)
+    end
+end)
+
+task.spawn(function()
+    while task.wait(25) do
+        if _G.toggles.EquipBest then
+            pcall(function()
+                local remote = ReplicatedStorage.Events.Plot.equipBest
+                if remote:IsA("RemoteFunction") then remote:InvokeServer() else remote:FireServer() end
+            end)
+        end
+    end
+end)
+
+-- AUTO BUY CRATES/POTIONS
+task.spawn(function()
+    while task.wait(1.5) do
+        if _G.toggles.Crates then
+            for crate, state in pairs(_G.selectedCrates) do
+                if state then ReplicatedStorage.Events.Crate.purchase:FireServer(crate, 1) task.wait(0.3) end
+            end
+        end
+        if _G.toggles.Potions then
+            for pot, state in pairs(_G.selectedPotions) do
+                if state then ReplicatedStorage.Events.Potion.purchase:FireServer(pot, 1) task.wait(0.3) end
+            end
+        end
     end
 end)
 
 -- ==========================================
--- UI REBUILD (Fixed Scrolling & Layout)
+-- UI REBUILD (Full Scroll Visibility)
 -- ==========================================
 if playerGui:FindFirstChild("AngeloFinalHub") then playerGui.AngeloFinalHub:Destroy() end
 
 local sg = Instance.new("ScreenGui", playerGui)
-sg.Name = "AngeloFinalHub"
-sg.ResetOnSpawn = false
+sg.Name = "AngeloFinalHub"; sg.ResetOnSpawn = false
 
 local main = Instance.new("Frame", sg)
-main.Size = UDim2.new(0, 360, 0, 500)
-main.Position = UDim2.new(0.5, -180, 0.5, -250)
-main.BackgroundColor3 = Color3.fromRGB(15, 15, 20)
-main.BorderSizePixel = 0
+main.Size = UDim2.new(0, 360, 0, 480); main.Position = UDim2.new(0.5, -180, 0.5, -240)
+main.BackgroundColor3 = Color3.fromRGB(15, 15, 22); main.Active = true; main.Draggable = true
 Instance.new("UICorner", main)
 
 local header = Instance.new("Frame", main)
-header.Size = UDim2.new(1, 0, 0, 50)
-header.BackgroundColor3 = Color3.fromRGB(28, 28, 38)
+header.Size = UDim2.new(1, 0, 0, 45); header.BackgroundColor3 = Color3.fromRGB(25, 25, 35)
 Instance.new("UICorner", header)
 
 local title = Instance.new("TextLabel", header)
-title.Size = UDim2.new(1, 0, 1, 0)
-title.Text = "ANGELO FULL POWER SPECIAL EDITION"
-title.TextColor3 = Color3.fromRGB(0, 255, 150)
-title.Font = Enum.Font.GothamBold; title.TextSize = 14; title.BackgroundTransparency = 1
+title.Size = UDim2.new(1, 0, 1, 0); title.BackgroundTransparency = 1
+title.Text = "ANGELO HUB v6.0"; title.TextColor3 = Color3.fromRGB(0, 255, 150)
+title.Font = Enum.Font.GothamBold; title.TextSize = 14
 
--- FIXED SCROLLING
 local scroll = Instance.new("ScrollingFrame", main)
-scroll.Size = UDim2.new(1, -20, 1, -60)
-scroll.Position = UDim2.new(0, 10, 0, 60)
-scroll.BackgroundTransparency = 1
-scroll.ScrollBarThickness = 3
-scroll.ScrollBarImageColor3 = Color3.fromRGB(0, 255, 150)
-scroll.AutomaticCanvasSize = Enum.AutomaticSize.Y -- Allows infinite downward space
-local layout = Instance.new("UIListLayout", scroll)
-layout.Padding = UDim.new(0, 10)
-layout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+scroll.Size = UDim2.new(1, -10, 1, -55); scroll.Position = UDim2.new(0, 5, 0, 50)
+scroll.BackgroundTransparency = 1; scroll.ScrollBarThickness = 3
+scroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
+local list = Instance.new("UIListLayout", scroll); list.Padding = UDim.new(0, 8); list.HorizontalAlignment = Enum.HorizontalAlignment.Center
 
 local function makeToggle(txt, key)
     local btn = Instance.new("TextButton", scroll)
-    btn.Size = UDim2.new(0.95, 0, 0, 45)
-    btn.BackgroundColor3 = _G.toggles[key] and Color3.fromRGB(0, 150, 80) or Color3.fromRGB(35, 35, 45)
-    btn.Text = txt; btn.TextColor3 = Color3.new(1,1,1); btn.Font = Enum.Font.Gotham; btn.TextSize = 13
+    btn.Size = UDim2.new(0.92, 0, 0, 40)
+    btn.BackgroundColor3 = Color3.fromRGB(35, 35, 45); btn.Text = txt; btn.TextColor3 = Color3.new(1,1,1); btn.Font = Enum.Font.Gotham
     Instance.new("UICorner", btn)
     btn.MouseButton1Click:Connect(function()
         _G.toggles[key] = not _G.toggles[key]
-        btn.BackgroundColor3 = _G.toggles[key] and Color3.fromRGB(0, 150, 80) or Color3.fromRGB(35, 35, 45)
-        saveConfig()
+        btn.BackgroundColor3 = _G.toggles[key] and Color3.fromRGB(0, 180, 90) or Color3.fromRGB(35, 35, 45)
     end)
 end
 
-local function makeMenu(titleTxt, items, targetTable)
-    local label = Instance.new("TextLabel", scroll)
-    label.Size = UDim2.new(1, 0, 0, 25); label.Text = titleTxt; label.TextColor3 = Color3.fromRGB(150, 150, 150)
-    label.BackgroundTransparency = 1; label.Font = Enum.Font.GothamBold; label.TextSize = 12
+local function makeSelectGrid(titleTxt, data, target)
+    local lab = Instance.new("TextLabel", scroll)
+    lab.Size = UDim2.new(0.9, 0, 0, 25); lab.Text = titleTxt; lab.TextColor3 = Color3.fromRGB(200,200,200); lab.BackgroundTransparency = 1; lab.Font = Enum.Font.GothamBold
 
-    local gridFrame = Instance.new("Frame", scroll)
-    gridFrame.Size = UDim2.new(0.95, 0, 0, 150) -- Fixed height for grid
-    gridFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 30)
-    Instance.new("UICorner", gridFrame)
+    local grid = Instance.new("Frame", scroll)
+    grid.Size = UDim2.new(0.92, 0, 0, 140); grid.BackgroundColor3 = Color3.fromRGB(25, 25, 32)
+    Instance.new("UICorner", grid)
     
-    local gScroll = Instance.new("ScrollingFrame", gridFrame)
-    gScroll.Size = UDim2.new(1, -10, 1, -10); gScroll.Position = UDim2.new(0, 5, 0, 5)
-    gScroll.BackgroundTransparency = 1; gScroll.CanvasSize = UDim2.new(0,0,3,0); gScroll.ScrollBarThickness = 2
-    local gLayout = Instance.new("UIGridLayout", gScroll)
-    gLayout.CellSize = UDim2.new(0, 100, 0, 30); gLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+    local gScroll = Instance.new("ScrollingFrame", grid)
+    gScroll.Size = UDim2.new(1, -10, 1, -10); gScroll.Position = UDim2.new(0, 5, 0, 5); gScroll.BackgroundTransparency = 1; gScroll.ScrollBarThickness = 2; gScroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
+    local gLay = Instance.new("UIGridLayout", gScroll); gLay.CellSize = UDim2.new(0, 95, 0, 28); gLay.Padding = UDim2.new(0, 5, 0, 5)
 
-    for _, name in pairs(items) do
+    for _, name in pairs(data) do
         local b = Instance.new("TextButton", gScroll)
-        b.Text = name; b.TextSize = 10; b.TextColor3 = Color3.new(1,1,1)
-        b.BackgroundColor3 = targetTable[name] and Color3.fromRGB(0, 120, 255) or Color3.fromRGB(45, 45, 55)
-        Instance.new("UICorner", b)
+        b.Text = name; b.TextSize = 10; b.TextColor3 = Color3.new(1,1,1); b.BackgroundColor3 = Color3.fromRGB(45, 45, 55); Instance.new("UICorner", b)
         b.MouseButton1Click:Connect(function()
-            targetTable[name] = not targetTable[name]
-            b.BackgroundColor3 = targetTable[name] and Color3.fromRGB(0, 120, 255) or Color3.fromRGB(45, 45, 55)
-            saveConfig()
+            target[name] = not target[name]
+            b.BackgroundColor3 = target[name] and Color3.fromRGB(0, 120, 255) or Color3.fromRGB(45, 45, 55)
         end)
     end
 end
 
--- DATA
+-- Data
 local crates = {"Hell", "Heaven", "Music", "Cyber", "Steampunk", "Graffiti", "Vampiric", "Construction", "Manga", "Samurai", "Royal", "Magma", "Ghost", "Abandoned", "Haunted", "Celestial", "Red Moon", "Vortex", "Cursed", "Devilous"}
 local potions = {"Yen", "Lucky", "Mutation", "Super Yen", "Rich", "Clover", "Angelic", "Bank", "Greed"}
 
--- GENERATE UI
-makeToggle("Auto Collect Yen (Slots 1-12)", "AutoCollect")
-makeToggle("Auto Equip Best (25s)", "EquipBest")
-makeToggle("Anti-AFK System", "AntiAFK")
+-- Build UI
+makeToggle("Auto Collect Yen (Plot 1 Only)", "AutoCollect")
+makeToggle("Auto Equip Best (25s Loop)", "EquipBest")
 makeToggle("Enable Auto Buy Crates", "Crates")
-makeMenu("SELECT CRATES", crates, _G.selectedCrates)
+makeSelectGrid("SELECT CRATES BELOW", crates, _G.selectedCrates)
 makeToggle("Enable Auto Use Potions", "Potions")
-makeMenu("SELECT POTIONS", potions, _G.selectedPotions)
+makeSelectGrid("SELECT POTIONS BELOW", potions, _G.selectedPotions)
+makeToggle("Anti-AFK System", "AntiAFK")
 
--- Dragging
-local dragging, dragStart, startPos
-header.InputBegan:Connect(function(i) if i.UserInputType == Enum.UserInputType.MouseButton1 then dragging = true; dragStart = i.Position; startPos = main.Position end end)
-UserInputService.InputChanged:Connect(function(i) if dragging and i.UserInputType == Enum.UserInputType.MouseMovement then local delta = i.Position - dragStart; main.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y) end end)
-UserInputService.InputEnded:Connect(function(i) if i.UserInputType == Enum.UserInputType.MouseButton1 then dragging = false end end)
-
-print("✅ Angelo Final Hub v5.7 (UI Overflow Fix) Ready.")
+print("✅ Angelo Hub v6.0 Ready. All menus restored.")
