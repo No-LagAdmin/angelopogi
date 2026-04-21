@@ -10,11 +10,7 @@ local playerGui = player:WaitForChild("PlayerGui")
 -- Config System
 local fileName = "AngeloFullPowerConfig.json"
 local function saveConfig()
-    local data = {
-        toggles = _G.toggles,
-        crates = _G.selectedCrates,
-        potions = _G.selectedPotions
-    }
+    local data = {toggles = _G.toggles, crates = _G.selectedCrates, potions = _G.selectedPotions}
     pcall(function() writefile(fileName, HttpService:JSONEncode(data)) end)
 end
 
@@ -29,26 +25,28 @@ local function loadConfig()
     end
 end
 
--- Global Logic Variables
 _G.toggles = { AutoCollect = false, AntiAFK = false, Crates = false, Potions = false, EquipBest = false }
 _G.selectedCrates = {}
 _G.selectedPotions = {}
 loadConfig()
 
 -- ==========================================
--- CORRECTED LOGIC MODULES
+-- RELIABLE LOGIC MODULES
 -- ==========================================
 
--- AUTO EQUIP BEST (Every 25s - RemoteFunction Fix)
+-- AUTO EQUIP BEST (Robust Remote Handling)
 task.spawn(function()
     while true do
         if _G.toggles.EquipBest then
             pcall(function()
-                local remote = ReplicatedStorage:WaitForChild("Events"):WaitForChild("Plot"):WaitForChild("equipBest")
-                if remote:IsA("RemoteFunction") then
-                    remote:InvokeServer()
-                else
-                    remote:FireServer()
+                local remotePath = ReplicatedStorage:FindFirstChild("Events") and ReplicatedStorage.Events:FindFirstChild("Plot") and ReplicatedStorage.Events.Plot:FindFirstChild("equipBest")
+                if remotePath then
+                    if remotePath:IsA("RemoteFunction") then
+                        -- Using task.spawn so if the function hangs, the rest of the script doesn't die
+                        task.spawn(function() remotePath:InvokeServer() end)
+                    else
+                        remotePath:FireServer()
+                    end
                 end
             end)
         end
@@ -56,34 +54,35 @@ task.spawn(function()
     end
 end)
 
--- CORRECTED AUTO COLLECT YEN (Strict Slot 1-12)
+-- AUTO COLLECT YEN (High-Priority Pathing)
 task.spawn(function()
     while true do
         if _G.toggles.AutoCollect then
-            pcall(function()
-                local char = player.Character
-                local root = char and char:FindFirstChild("HumanoidRootPart")
-                local plots = workspace:FindFirstChild("Plots")
-                local plot1 = plots and plots:FindFirstChild("Plot1")
-                
-                if plot1 and root then
-                    local slots = plot1:FindFirstChild("Slots")
-                    if slots then
-                        for i = 1, 12 do
-                            -- Strict Pathing based on your input
+            local char = player.Character
+            local root = char and char:FindFirstChild("HumanoidRootPart")
+            
+            -- Locate Plot1 Safely
+            local plot1 = workspace:FindFirstChild("Plots") and workspace.Plots:FindFirstChild("Plot1")
+            
+            if plot1 and root then
+                local slots = plot1:FindFirstChild("Slots")
+                if slots then
+                    for i = 1, 12 do
+                        pcall(function()
                             local slot = slots:FindFirstChild(tostring(i))
                             local button = slot and slot:FindFirstChild("Button")
-                            local touch = button and button:FindFirstChild("TouchInterest")
                             
-                            if touch then
+                            -- We check for the Button itself. If TouchInterest is hidden, 
+                            -- firing the Button usually triggers it anyway.
+                            if button and button:IsA("BasePart") then
                                 firetouchinterest(button, root, 0)
-                                task.wait(0.02)
+                                task.wait(0.05) -- Slightly longer wait for server registration
                                 firetouchinterest(button, root, 1)
                             end
-                        end
+                        end)
                     end
                 end
-            end)
+            end
         end
         task.wait(5) 
     end
@@ -109,7 +108,7 @@ task.spawn(function()
 end)
 
 -- ==========================================
--- UI DESIGN
+-- UI DESIGN (ALIGNED & FINALIZED)
 -- ==========================================
 if playerGui:FindFirstChild("AngeloFinalHub") then playerGui.AngeloFinalHub:Destroy() end
 
@@ -187,8 +186,8 @@ end
 local crates = {"Hell", "Heaven", "Music", "Cyber", "Steampunk", "Graffiti", "Vampiric", "Construction", "Manga", "Samurai", "Royal", "Magma", "Ghost", "Abandoned", "Haunted", "Celestial", "Red Moon", "Vortex", "Cursed", "Devilous"}
 local potions = {"Yen", "Lucky", "Mutation", "Super Yen", "Rich", "Clover", "Angelic", "Bank", "Greed"}
 
-makeToggle("Auto Collect Yen (Plot 1 | Slots 1-12)", "AutoCollect")
-makeToggle("Auto Equip Best (Invoke Server)", "EquipBest")
+makeToggle("Auto Collect Yen (Plot 1 Only)", "AutoCollect")
+makeToggle("Auto Equip Best (V5.5 Fix)", "EquipBest")
 makeToggle("Anti-AFK System", "AntiAFK")
 makeToggle("Enable Auto Buy Crates", "Crates")
 makeGrid("Select Crates", crates, _G.selectedCrates)
@@ -218,4 +217,4 @@ player.Idled:Connect(function()
     end
 end)
 
-print("✅ Angelo Final Hub v5.4 (Strict Pathing & Invoke Fix) Loaded.")
+print("✅ Angelo Final Hub v5.5 Ready.")
