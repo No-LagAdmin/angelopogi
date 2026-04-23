@@ -1,4 +1,4 @@
--- ANGELO FULL POWER - FINAL STABLE VERSION
+-- ANGELO FULL POWER - FINAL STABLE VERSION (v8.5 SPEED-OPTIMIZED)
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local HttpService = game:GetService("HttpService")
@@ -38,6 +38,7 @@ local function fireStrictRemote(categoryName, itemName)
     end)
 end
 
+-- TASK 1: EQUIP BEST (15s Loop)
 task.spawn(function()
     while task.wait(15) do
         if _G.toggles.EquipBest then 
@@ -49,16 +50,29 @@ task.spawn(function()
     end
 end)
 
+-- TASK 2: FAST CRATE BUYER (0.5s Loop + 0.5s interval)
 task.spawn(function()
-    while task.wait(5) do
+    while task.wait(0.5) do
         if _G.toggles.Crates then
             for crate, state in pairs(_G.selectedCrates) do
-                if state then fireStrictRemote("Crate", crate) task.wait(1.5) end
+                if state then 
+                    fireStrictRemote("Crate", crate) 
+                    task.wait(0.5) 
+                end
             end
         end
+    end
+end)
+
+-- TASK 3: STANDARD POTION BUYER (5s Loop + 1.5s interval)
+task.spawn(function()
+    while task.wait(5) do
         if _G.toggles.Potions then
             for pot, state in pairs(_G.selectedPotions) do
-                if state then fireStrictRemote("Potion", pot) task.wait(1.5) end
+                if state then 
+                    fireStrictRemote("Potion", pot) 
+                    task.wait(1.5) 
+                end
             end
         end
     end
@@ -81,7 +95,6 @@ title.Size = UDim2.new(1, -80, 1, 0); title.Position = UDim2.new(0, 15, 0, 0)
 title.BackgroundTransparency = 1; title.Text = "ANGELO FULL POWER"; title.TextColor3 = Color3.fromRGB(0, 255, 150)
 title.Font = Enum.Font.GothamBold; title.TextSize = 16; title.TextXAlignment = Enum.TextXAlignment.Left
 
--- MINIMIZE BUTTON
 local minBtn = Instance.new("TextButton", header)
 minBtn.Size = UDim2.new(0, 35, 0, 35); minBtn.Position = UDim2.new(1, -40, 0, 5)
 minBtn.BackgroundColor3 = Color3.fromRGB(35, 35, 45); minBtn.Text = "-"; minBtn.TextColor3 = Color3.new(1,1,1)
@@ -90,13 +103,8 @@ minBtn.Font = Enum.Font.GothamBold; Instance.new("UICorner", minBtn)
 local minimized = false
 minBtn.MouseButton1Click:Connect(function()
     minimized = not minimized
-    if minimized then
-        main:TweenSize(UDim2.new(0, 380, 0, 45), "Out", "Quad", 0.3, true)
-        minBtn.Text = "+"
-    else
-        main:TweenSize(UDim2.new(0, 380, 0, 520), "Out", "Quad", 0.3, true)
-        minBtn.Text = "-"
-    end
+    main:TweenSize(minimized and UDim2.new(0, 380, 0, 45) or UDim2.new(0, 380, 0, 520), "Out", "Quad", 0.3, true)
+    minBtn.Text = minimized and "+" or "-"
 end)
 
 local scroll = Instance.new("ScrollingFrame", main)
@@ -143,7 +151,7 @@ makeToggle("Auto Collect Yen", "AutoCollect")
 makeToggle("Auto Equip Best", "EquipBest")
 makeToggle("Anti-AFK System", "AntiAFK")
 
--- COMBINED CRATE LIST
+-- FULL CRATE LIST
 local fullCrateList = {
     "Hell", "Heaven", "Music", "Cyber", "Steampunk", "Graffiti", "Vampiric", "Construction", "Manga", "Samurai", 
     "Royal", "Magma", "Ghost", "Abandoned", "Haunted", "Celestial", "Red Moon", "Vortex", "Cursed", "Devilous",
@@ -151,7 +159,7 @@ local fullCrateList = {
     "Green Lantern", "Honey", "Infernus", "Iron Bound", "Mirror", "Moss", "Purple Curse", "Rib", "Robo", "Rune", "Paper Talisman"
 }
 
--- COMBINED POTION LIST
+-- FULL POTION LIST
 local fullPotionList = {
     "Yen", "Lucky", "Mutation", "Super Yen", "Rich", "Clover", "Angelic", "Bank", "Greed", "Super Lucky", "Evil", "Fairy",
     "Pulse", "Spark", "Golden Koi", "Imperial", "Morph"
@@ -160,4 +168,4 @@ local fullPotionList = {
 makeSection("Crate", "Crates", fullCrateList, _G.selectedCrates)
 makeSection("Potion", "Potions", fullPotionList, _G.selectedPotions)
 
-print("✅ ANGELO FULL POWER v8.0 FINALIZED.")
+print("✅ ANGELO FULL POWER FINALIZED. Crates: 0.5s | Potions: 5s.")
