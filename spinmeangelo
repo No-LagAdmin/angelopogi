@@ -1,4 +1,4 @@
--- ANGELO FULL POWER - v8.5 STABLE (INTEGRATED VERSION)
+-- ANGELO FULL POWER - v8.6 BOLD UI EDITION
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local HttpService = game:GetService("HttpService")
@@ -130,11 +130,17 @@ fastCratesBtn.MouseButton1Click:Connect(function()
     fastCratesBtn.Text = "⚡ Fast Crates Open ⚡"
 end)
 
+-- UPDATED TOGGLE FUNCTION (BOLD & BIGGER)
 local function makeToggle(txt, key, parent)
     local btn = Instance.new("TextButton", parent or scroll)
-    btn.Size = UDim2.new(0.94, 0, 0, 40)
+    btn.Size = UDim2.new(0.94, 0, 0, 45) -- Increased height slightly
     btn.BackgroundColor3 = _G.toggles[key] and Color3.fromRGB(0, 180, 90) or Color3.fromRGB(30, 30, 40)
-    btn.Text = txt; btn.TextColor3 = Color3.new(1,1,1); btn.Font = Enum.Font.Gotham; Instance.new("UICorner", btn)
+    btn.Text = txt
+    btn.TextColor3 = Color3.new(1,1,1)
+    btn.Font = Enum.Font.GothamBold -- Changed to BOLD
+    btn.TextSize = 14 -- Increased Size
+    Instance.new("UICorner", btn)
+    
     btn.MouseButton1Click:Connect(function()
         _G.toggles[key] = not _G.toggles[key]
         btn.BackgroundColor3 = _G.toggles[key] and Color3.fromRGB(0, 180, 90) or Color3.fromRGB(30, 30, 40)
@@ -146,10 +152,13 @@ local function makeSection(titleTxt, toggleKey, items, targetTable)
     local titleLab = Instance.new("TextLabel", scroll)
     titleLab.Size = UDim2.new(0.94, 0, 0, 25); titleLab.Text = "--- SELECT " .. titleTxt:upper() .. " ---"
     titleLab.TextColor3 = Color3.fromRGB(0, 255, 150); titleLab.BackgroundTransparency = 1; titleLab.Font = Enum.Font.GothamBold; titleLab.TextSize = 13
+    
     local gridFrame = Instance.new("Frame", scroll)
     gridFrame.Size = UDim2.new(0.94, 0, 0, 150); gridFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 28); Instance.new("UICorner", gridFrame)
+    
     local iScroll = Instance.new("ScrollingFrame", gridFrame)
     iScroll.Size = UDim2.new(1, -10, 1, -10); iScroll.Position = UDim2.new(0, 5, 0, 5); iScroll.BackgroundTransparency = 1; iScroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
+    
     local grid = Instance.new("UIGridLayout", iScroll); grid.CellSize = UDim2.new(0, 100, 0, 30); grid.CellPadding = UDim2.new(0, 5, 0, 5)
 
     for _, name in ipairs(items) do
@@ -162,6 +171,7 @@ local function makeSection(titleTxt, toggleKey, items, targetTable)
             pcall(function() writefile("AngeloHub_Config.json", HttpService:JSONEncode({toggles=_G.toggles, crates=_G.selectedCrates, potions=_G.selectedPotions})) end)
         end)
     end
+    -- This section toggle also gets the Bold/Big treatment via makeToggle
     makeToggle("Enable Auto " .. titleTxt, toggleKey)
 end
 
