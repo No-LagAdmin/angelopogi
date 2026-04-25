@@ -1,174 +1,341 @@
--- ANGELO FULL POWER - v8.5 STABLE (AUTO-SAVE & DRAG FIXED)
+-- ANGELO FULL POWER - FINAL STABLE VERSION (v8.5 SPEED-OPTIMIZED)
+
 local Players = game:GetService("Players")
+
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
 local HttpService = game:GetService("HttpService")
+
 local CoreGui = game:GetService("CoreGui")
 
--- 1. DATA INITIALIZATION
+local player = Players.LocalPlayer
+
+
+
 _G.toggles = { AutoCollect = false, AntiAFK = false, Crates = false, Potions = false, EquipBest = false }
+
 _G.selectedCrates = {}
+
 _G.selectedPotions = {}
-_G.FastCrateActive = {}
 
--- 2. ROBUST SAVE/LOAD SYSTEM
-local function saveSettings()
-    local data = {
-        toggles = _G.toggles,
-        crates = _G.selectedCrates,
-        potions = _G.selectedPotions,
-        fastCrates = _G.FastCrateActive
-    }
-    local success, encoded = pcall(function() return HttpService:JSONEncode(data) end)
-    if success then
-        writefile("AngeloHub_Config.json", encoded)
-    end
-end
 
-local function loadSettings()
+
+-- LOAD CONFIG
+
+pcall(function()
+
     if isfile and isfile("AngeloHub_Config.json") then
-        local success, content = pcall(function() return readfile("AngeloHub_Config.json") end)
-        if success then
-            local data = HttpService:JSONDecode(content)
-            if data.toggles then _G.toggles = data.toggles end
-            if data.crates then _G.selectedCrates = data.crates end
-            if data.potions then _G.selectedPotions = data.potions end
-            if data.fastCrates then _G.FastCrateActive = data.fastCrates end
-        end
+
+        local data = HttpService:JSONDecode(readfile("AngeloHub_Config.json"))
+
+        if data.toggles then _G.toggles = data.toggles end
+
+        if data.crates then _G.selectedCrates = data.crates end
+
+        if data.potions then _G.selectedPotions = data.potions end
+
     end
-end
 
-loadSettings()
-
--- 3. CLEANUP
-for _, v in pairs(CoreGui:GetChildren()) do 
-    if v.Name == "AngeloFinalHub" or v.Name == "AngeloFastCrateUI" then v:Destroy() end 
-end
-
--- 4. REMOTE HANDLER
-local function fireStrictRemote(categoryName, itemName, amount)
-    pcall(function()
-        local events = ReplicatedStorage:FindFirstChild("Events")
-        if events then
-            local folder = events:FindFirstChild(categoryName)
-            if folder then
-                local remote = folder:FindFirstChild("open") or folder:FindFirstChild("purchase") or folder:FindFirstChild("use")
-                if remote then 
-                    if remote:IsA("RemoteFunction") then
-                        task.spawn(function() remote:InvokeServer(itemName, amount or 1) end)
-                    else
-                        remote:FireServer(itemName, amount or 1) 
-                    end
-                end
-            end
-        end
-    end)
-end
-
--- 5. THE LOOP (Uses Auto-Saved Config)
-task.spawn(function()
-    while true do
-        local active = false
-        for crate, state in pairs(_G.FastCrateActive) do
-            if state then active = true fireStrictRemote("Crate", crate, 6) end
-        end
-        task.wait(active and 0.8 or 1)
-    end
 end)
 
--- 6. MAIN UI
+
+
+-- CLEANUP
+
+for _, v in pairs(CoreGui:GetChildren()) do if v.Name == "AngeloFinalHub" then v:Destroy() end end
+
+
+
+-- ==========================================
+
+-- STABLE BACKEND LOGIC
+
+-- ==========================================
+
+local function fireStrictRemote(categoryName, itemName)
+
+    pcall(function()
+
+        local events = ReplicatedStorage:FindFirstChild("Events")
+
+        if events then
+
+            local categoryFolder = events:FindFirstChild(categoryName)
+
+            if categoryFolder then
+
+                local remote = categoryFolder:FindFirstChild("purchase") or categoryFolder:FindFirstChild("use")
+
+                if remote then remote:FireServer(itemName, 1) end
+
+            end
+
+        end
+
+    end)
+
+end
+
+
+
+-- TASK 1: EQUIP BEST (15s Loop)
+
+task.spawn(function()
+
+    while task.wait(15) do
+
+        if _G.toggles.EquipBest then 
+
+            pcall(function()
+
+                local r = ReplicatedStorage:FindFirstChild("EquipBest", true) or ReplicatedStorage:FindFirstChild("equipBest", true)
+
+                if r then if r:IsA("RemoteEvent") then r:FireServer() else r:InvokeServer() end end
+
+            end)
+
+        end
+
+    end
+
+end)
+
+
+
+-- TASK 2: FAST CRATE BUYER (0.5s Loop + 0.5s interval)
+
+task.spawn(function()
+
+    while task.wait(0.5) do
+
+        if _G.toggles.Crates then
+
+            for crate, state in pairs(_G.selectedCrates) do
+
+                if state then 
+
+                    fireStrictRemote("Crate", crate) 
+
+                    task.wait(0.5) 
+
+                end
+
+            end
+
+        end
+
+    end
+
+end)
+
+
+
+-- TASK 3: STANDARD POTION BUYER (5s Loop + 1.5s interval)
+
+task.spawn(function()
+
+    while task.wait(5) do
+
+        if _G.toggles.Potions then
+
+            for pot, state in pairs(_G.selectedPotions) do
+
+                if state then 
+
+                    fireStrictRemote("Potion", pot) 
+
+                    task.wait(1.5) 
+
+                end
+
+            end
+
+        end
+
+    end
+
+end)
+
+
+
+-- ==========================================
+
+-- FINAL UI CONSTRUCTION
+
+-- ==========================================
+
 local sg = Instance.new("ScreenGui", CoreGui); sg.Name = "AngeloFinalHub"
+
 local main = Instance.new("Frame", sg)
+
 main.Size = UDim2.new(0, 380, 0, 520); main.Position = UDim2.new(0.5, -190, 0.5, -260)
+
 main.BackgroundColor3 = Color3.fromRGB(12, 12, 18); main.Active = true; main.Draggable = true; main.ClipsDescendants = true
-Instance.new("UICorner", main).CornerRadius = UDim.new(0, 8)
+
+Instance.new("UICorner", main)
+
+
 
 local header = Instance.new("Frame", main)
-header.Size = UDim2.new(1, 0, 0, 45); header.BackgroundColor3 = Color3.fromRGB(22, 22, 30)
-Instance.new("UICorner", header).CornerRadius = UDim.new(0, 8)
+
+header.Size = UDim2.new(1, 0, 0, 45); header.BackgroundColor3 = Color3.fromRGB(22, 22, 30); Instance.new("UICorner", header)
+
+
 
 local title = Instance.new("TextLabel", header)
+
 title.Size = UDim2.new(1, -80, 1, 0); title.Position = UDim2.new(0, 15, 0, 0)
-title.BackgroundTransparency = 1; title.Text = "ANGELO FULL POWER v8.5"; title.TextColor3 = Color3.fromRGB(0, 255, 150)
+
+title.BackgroundTransparency = 1; title.Text = "ANGELO FULL POWER"; title.TextColor3 = Color3.fromRGB(0, 255, 150)
+
 title.Font = Enum.Font.GothamBold; title.TextSize = 16; title.TextXAlignment = Enum.TextXAlignment.Left
 
+
+
 local minBtn = Instance.new("TextButton", header)
+
 minBtn.Size = UDim2.new(0, 35, 0, 35); minBtn.Position = UDim2.new(1, -40, 0, 5)
+
 minBtn.BackgroundColor3 = Color3.fromRGB(35, 35, 45); minBtn.Text = "-"; minBtn.TextColor3 = Color3.new(1,1,1)
+
 minBtn.Font = Enum.Font.GothamBold; Instance.new("UICorner", minBtn)
 
-local isMinimized = false
+
+
+local minimized = false
+
 minBtn.MouseButton1Click:Connect(function()
-    isMinimized = not isMinimized
-    main:TweenSize(isMinimized and UDim2.new(0, 380, 0, 45) or UDim2.new(0, 380, 0, 520), "Out", "Quart", 0.3, true)
-    minBtn.Text = isMinimized and "+" or "-"
+
+    minimized = not minimized
+
+    main:TweenSize(minimized and UDim2.new(0, 380, 0, 45) or UDim2.new(0, 380, 0, 520), "Out", "Quad", 0.3, true)
+
+    minBtn.Text = minimized and "+" or "-"
+
 end)
+
+
 
 local scroll = Instance.new("ScrollingFrame", main)
+
 scroll.Size = UDim2.new(1, -10, 1, -55); scroll.Position = UDim2.new(0, 5, 0, 50); scroll.BackgroundTransparency = 1; scroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
-local list = Instance.new("UIListLayout", scroll); list.Padding = UDim.new(0, 8); list.HorizontalAlignment = Enum.HorizontalAlignment.Center
 
--- TOGGLE MAKER (WITH SAVE)
-local function makeToggle(txt, key)
-    local btn = Instance.new("TextButton", scroll)
+local list = Instance.new("UIListLayout", scroll); list.Padding = UDim.new(0, 10); list.HorizontalAlignment = Enum.HorizontalAlignment.Center
+
+
+
+local function makeToggle(txt, key, parent)
+
+    local btn = Instance.new("TextButton", parent or scroll)
+
     btn.Size = UDim2.new(0.94, 0, 0, 40)
+
     btn.BackgroundColor3 = _G.toggles[key] and Color3.fromRGB(0, 180, 90) or Color3.fromRGB(30, 30, 40)
-    btn.Text = txt; btn.TextColor3 = Color3.new(1,1,1); btn.Font = Enum.Font.GothamBold; Instance.new("UICorner", btn)
+
+    btn.Text = txt; btn.TextColor3 = Color3.new(1,1,1); btn.Font = Enum.Font.Gotham; Instance.new("UICorner", btn)
+
     btn.MouseButton1Click:Connect(function()
+
         _G.toggles[key] = not _G.toggles[key]
+
         btn.BackgroundColor3 = _G.toggles[key] and Color3.fromRGB(0, 180, 90) or Color3.fromRGB(30, 30, 40)
-        saveSettings()
+
+        pcall(function() writefile("AngeloHub_Config.json", HttpService:JSONEncode({toggles=_G.toggles, crates=_G.selectedCrates, potions=_G.selectedPotions})) end)
+
     end)
+
 end
 
--- SECTION MAKER (WITH SAVE)
+
+
 local function makeSection(titleTxt, toggleKey, items, targetTable)
-    local lab = Instance.new("TextLabel", scroll)
-    lab.Size = UDim2.new(0.94, 0, 0, 30); lab.Text = "--- " .. titleTxt:upper() .. " SELECTION ---"
-    lab.TextColor3 = Color3.fromRGB(0, 255, 150); lab.BackgroundTransparency = 1; lab.Font = Enum.Font.GothamBold; lab.TextSize = 12
-    local gFrame = Instance.new("Frame", scroll); gFrame.Size = UDim2.new(0.94, 0, 0, 160); gFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 28); Instance.new("UICorner", gFrame)
-    local iScroll = Instance.new("ScrollingFrame", gFrame); iScroll.Size = UDim2.new(1, -10, 1, -10); iScroll.Position = UDim2.new(0, 5, 0, 5); iScroll.BackgroundTransparency = 1; iScroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
-    local grid = Instance.new("UIGridLayout", iScroll); grid.CellSize = UDim2.new(0, 105, 0, 30); grid.CellPadding = UDim2.new(0, 5, 0, 5)
+
+    local titleLab = Instance.new("TextLabel", scroll)
+
+    titleLab.Size = UDim2.new(0.94, 0, 0, 25); titleLab.Text = "--- SELECT " .. titleTxt:upper() .. " ---"
+
+    titleLab.TextColor3 = Color3.fromRGB(0, 255, 150); titleLab.BackgroundTransparency = 1; titleLab.Font = Enum.Font.GothamBold; titleLab.TextSize = 13
+
+    local gridFrame = Instance.new("Frame", scroll)
+
+    gridFrame.Size = UDim2.new(0.94, 0, 0, 150); gridFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 28); Instance.new("UICorner", gridFrame)
+
+    local iScroll = Instance.new("ScrollingFrame", gridFrame)
+
+    iScroll.Size = UDim2.new(1, -10, 1, -10); iScroll.Position = UDim2.new(0, 5, 0, 5); iScroll.BackgroundTransparency = 1; iScroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
+
+    local grid = Instance.new("UIGridLayout", iScroll); grid.CellSize = UDim2.new(0, 100, 0, 30); grid.CellPadding = UDim2.new(0, 5, 0, 5)
+
+
+
     for _, name in ipairs(items) do
-        local b = Instance.new("TextButton", iScroll); b.Text = name; b.TextSize = 10; b.TextColor3 = Color3.new(1,1,1)
+
+        local b = Instance.new("TextButton", iScroll)
+
+        b.Text = name; b.TextSize = 10; b.TextColor3 = Color3.new(1,1,1)
+
         b.BackgroundColor3 = targetTable[name] and Color3.fromRGB(0, 120, 255) or Color3.fromRGB(40, 40, 50); Instance.new("UICorner", b)
+
         b.MouseButton1Click:Connect(function()
+
             targetTable[name] = not targetTable[name]
+
             b.BackgroundColor3 = targetTable[name] and Color3.fromRGB(0, 120, 255) or Color3.fromRGB(40, 40, 50)
-            saveSettings()
+
+            pcall(function() writefile("AngeloHub_Config.json", HttpService:JSONEncode({toggles=_G.toggles, crates=_G.selectedCrates, potions=_G.selectedPotions})) end)
+
         end)
+
     end
+
     makeToggle("Enable Auto " .. titleTxt, toggleKey)
+
 end
 
--- FAST OPEN BUTTON & UI (WITH SAVE)
-local fastBtn = Instance.new("TextButton", scroll)
-fastBtn.Size = UDim2.new(0.94, 0, 0, 45); fastBtn.BackgroundColor3 = Color3.fromRGB(0, 255, 150)
-fastBtn.Text = "⚡ FAST OPEN CRATES ⚡"; fastBtn.TextColor3 = Color3.new(0,0,0); fastBtn.Font = Enum.Font.GothamBold; Instance.new("UICorner", fastBtn)
 
-local fullCrateList = {"Hell", "Heaven", "Music", "Cyber", "Steampunk", "Graffiti", "Vampiric", "Construction", "Manga", "Samurai", "Royal", "Magma", "Ghost", "Abandoned", "Haunted", "Celestial", "Red Moon", "Vortex", "Cursed", "Devilous", "Cage Bound", "Caged Energy", "Clockwork", "Coral", "Deep Sea", "DNA", "Enchanted Wood", "Foam", "Gear Work", "Green Lantern", "Honey", "Infernus", "Iron Bound", "Mirror", "Moss", "Purple Curse", "Rib", "Robo", "Rune", "Paper Talisman"}
-local fullPotionList = {"Yen", "Lucky", "Mutation", "Super Yen", "Rich", "Clover", "Angelic", "Bank", "Greed", "Super Lucky", "Evil", "Fairy", "Pulse", "Spark", "Golden Koi", "Imperial", "Morph"}
 
-fastBtn.MouseButton1Click:Connect(function()
-    local fastUI = CoreGui:FindFirstChild("AngeloFastCrateUI")
-    if fastUI then fastUI.Enabled = not fastUI.Enabled return end
-    
-    local fsg = Instance.new("ScreenGui", CoreGui); fsg.Name = "AngeloFastCrateUI"
-    local fMain = Instance.new("Frame", fsg); fMain.Size = UDim2.new(0, 250, 0, 400); fMain.Position = UDim2.new(0.5, 200, 0.5, -200); fMain.BackgroundColor3 = Color3.fromRGB(15, 15, 22); fMain.Active = true; fMain.Draggable = true; Instance.new("UICorner", fMain)
-    local fScroll = Instance.new("ScrollingFrame", fMain); fScroll.Size = UDim2.new(1, -10, 1, -50); fScroll.Position = UDim2.new(0, 5, 0, 45); fScroll.BackgroundTransparency = 1; fScroll.AutomaticCanvasSize = Enum.AutomaticSize.Y; Instance.new("UIListLayout", fScroll).Padding = UDim.new(0, 5)
-    
-    for _, name in pairs(fullCrateList) do
-        local b = Instance.new("TextButton", fScroll); b.Size = UDim2.new(1, -10, 0, 32); b.Text = name; b.Font = Enum.Font.GothamBold; b.TextSize = 12; Instance.new("UICorner", b)
-        local function update() b.BackgroundColor3 = _G.FastCrateActive[name] and Color3.fromRGB(0, 255, 150) or Color3.fromRGB(40,40,50) b.TextColor3 = _G.FastCrateActive[name] and Color3.new(0,0,0) or Color3.new(1,1,1) end
-        update()
-        b.MouseButton1Click:Connect(function() _G.FastCrateActive[name] = not _G.FastCrateActive[name] update() saveSettings() end)
-    end
-end)
+-- DATA & BUILD
 
--- FINAL ASSEMBLY
 makeToggle("Auto Collect Yen", "AutoCollect")
+
 makeToggle("Auto Equip Best", "EquipBest")
+
 makeToggle("Anti-AFK System", "AntiAFK")
+
+
+
+-- FULL CRATE LIST
+
+local fullCrateList = {
+
+    "Hell", "Heaven", "Music", "Cyber", "Steampunk", "Graffiti", "Vampiric", "Construction", "Manga", "Samurai", 
+
+    "Royal", "Magma", "Ghost", "Abandoned", "Haunted", "Celestial", "Red Moon", "Vortex", "Cursed", "Devilous",
+
+    "Cage Bound", "Caged Energy", "Clockwork", "Coral", "Deep Sea", "DNA", "Enchanted Wood", "Foam", "Gear Work", 
+
+    "Green Lantern", "Honey", "Infernus", "Iron Bound", "Mirror", "Moss", "Purple Curse", "Rib", "Robo", "Rune", "Paper Talisman"
+
+}
+
+
+
+-- FULL POTION LIST
+
+local fullPotionList = {
+
+    "Yen", "Lucky", "Mutation", "Super Yen", "Rich", "Clover", "Angelic", "Bank", "Greed", "Super Lucky", "Evil", "Fairy",
+
+    "Pulse", "Spark", "Golden Koi", "Imperial", "Morph"
+
+}
+
+
+
 makeSection("Crate", "Crates", fullCrateList, _G.selectedCrates)
+
 makeSection("Potion", "Potions", fullPotionList, _G.selectedPotions)
 
-print("✅ AUTO-SAVE ACTIVE. Settings saved to AngeloHub_Config.json")
+
+
+print("✅ ANGELO FULL POWER FINALIZED. Crates: 0.5s | Potions: 5s.")
